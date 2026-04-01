@@ -1,0 +1,6 @@
+@TokenScope_HostAddress = http://localhost:5137
+
+GET {{TokenScope_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
