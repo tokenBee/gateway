@@ -19,13 +19,15 @@ public class TraceLogger : ITraceLogger
             input_tokens, output_tokens, original_tokens, compressed_tokens,
             input_cost_usd, output_cost_usd, total_cost_usd, saved_cost_usd,
             latency_ms, status_code, was_compressed, is_streaming,
-            user_id, session_id, properties_json
+            user_id, session_id, properties_json,
+            request_body, response_body
         ) VALUES (
             @Id, @Timestamp, @Path, @Model, @Provider,
             @InputTokens, @OutputTokens, @OriginalTokens, @CompressedTokens,
             @InputCostUsd, @OutputCostUsd, @TotalCostUsd, @SavedCostUsd,
             @LatencyMs, @StatusCode, @WasCompressed, @IsStreaming,
-            @UserId, @SessionId, @PropertiesJson
+            @UserId, @SessionId, @PropertiesJson,
+            @RequestBody, @ResponseBody
         );
         """;
 

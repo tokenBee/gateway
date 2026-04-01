@@ -7,6 +7,7 @@ public static class ObservabilityExtensions
         IConfiguration configuration)
     {
         services.AddSingleton<ITraceLogger, TraceLogger>();
+        services.AddScoped<MetricsQueries>();
         return services;
     }
 }

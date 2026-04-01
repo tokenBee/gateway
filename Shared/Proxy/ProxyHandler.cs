@@ -84,7 +84,8 @@ public static class ProxyHandler
             var outputTokens = 0;
 
             _ = LogTrace(traceLogger, path, model, metadata, inputTokens, outputTokens,
-                (int)llmResponse.StatusCode, stopwatch.ElapsedMilliseconds, isStreaming);
+                (int)llmResponse.StatusCode, stopwatch.ElapsedMilliseconds, isStreaming,
+                body, null);
         }
         else
         {
@@ -96,11 +97,19 @@ public static class ProxyHandler
             var (inputTokens, outputTokens) = ExtractTokens(responseBody);
 
             _ = LogTrace(traceLogger, path, model, metadata, inputTokens, outputTokens,
-                (int)llmResponse.StatusCode, stopwatch.ElapsedMilliseconds, isStreaming);
+                (int)llmResponse.StatusCode, stopwatch.ElapsedMilliseconds, isStreaming,
+                body, responseBody);
         }
     }
 
-    private static Task LogTrace(ITraceLogger traceLogger,string? path,string model,RequestMetadata metadata,int inputTokens,int outputTokens,int statusCode,long latencyMs,bool isStreaming)
+    private const int MaxBodyLength = 10_000;
+
+    private static string? Truncate(string? value) =>
+        value is not null && value.Length > MaxBodyLength
+            ? value[..MaxBodyLength]
+            : value;
+
+    private static Task LogTrace(ITraceLogger traceLogger,string? path,string model,RequestMetadata metadata,int inputTokens,int outputTokens,int statusCode,long latencyMs,bool isStreaming,string? requestBody,string? responseBody)
     {
         var (inputCost, outputCost, totalCost) =
             CostCalculator.Calculate(model, inputTokens, outputTokens);
@@ -125,7 +134,9 @@ public static class ProxyHandler
             WasCompressed = false,
             IsStreaming = isStreaming,
             UserId = metadata.UserId,
-            SessionId = metadata.SessionId
+            SessionId = metadata.SessionId,
+            RequestBody = Truncate(requestBody),
+            ResponseBody = Truncate(responseBody)
         };
 
         trace.SetProperties(metadata.Properties);

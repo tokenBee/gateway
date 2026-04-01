@@ -24,6 +24,8 @@ public class TraceRecord
     public string? UserId { get; set; }
     public string? SessionId { get; set; }
     public string? PropertiesJson { get; set; }
+    public string? RequestBody { get; set; }
+    public string? ResponseBody { get; set; }
 
     public void SetProperties(Dictionary<string, string> properties)
     {

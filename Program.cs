@@ -13,6 +13,17 @@ try
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilog();
 
+    // CORS for dashboard frontend
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("DashboardCors", policy =>
+        {
+            policy.AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+    });
+
     // Named HttpClient "llm" with 30s timeout and Polly retry
     builder.Services.AddHttpClient("llm", client =>
     {
@@ -21,13 +32,16 @@ try
     .AddTransientHttpErrorPolicy(p =>
         p.WaitAndRetryAsync(3, attempt => TimeSpan.FromMilliseconds(200 * attempt)));
 
-    // Observability (ITraceLogger)
+    // Observability (ITraceLogger + MetricsQueries)
     builder.Services.AddObservability(builder.Configuration);
 
     var app = builder.Build();
 
+    app.UseCors("DashboardCors");
+
     app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
     app.MapPost("/v1/{**path}", ProxyHandler.Handle);
+    app.MapObservabilityEndpoints();
 
     app.Run();
 }
