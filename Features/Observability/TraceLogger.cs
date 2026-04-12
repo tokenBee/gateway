@@ -1,7 +1,7 @@
 using Dapper;
 using Npgsql;
 
-namespace TokenScope.Features.Observability;
+namespace TokenBee.Features.Observability;
 
 public interface ITraceLogger
 {
@@ -20,14 +20,14 @@ public class TraceLogger : ITraceLogger
             input_cost_usd, output_cost_usd, total_cost_usd, saved_cost_usd,
             latency_ms, status_code, was_compressed, is_streaming,
             user_id, session_id, properties_json,
-            request_body, response_body
+            request_body, response_body, compression_metadata_json
         ) VALUES (
             @Id, @Timestamp, @Path, @Model, @Provider,
             @InputTokens, @OutputTokens, @OriginalTokens, @CompressedTokens,
             @InputCostUsd, @OutputCostUsd, @TotalCostUsd, @SavedCostUsd,
             @LatencyMs, @StatusCode, @WasCompressed, @IsStreaming,
             @UserId, @SessionId, @PropertiesJson,
-            @RequestBody, @ResponseBody
+            @RequestBody, @ResponseBody, @CompressionMetadataJson
         );
         """;
 

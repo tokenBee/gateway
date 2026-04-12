@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace TokenScope.Features.Observability;
+namespace TokenBee.Features.Observability;
 
 public class TraceRecord
 {
@@ -26,6 +26,7 @@ public class TraceRecord
     public string? PropertiesJson { get; set; }
     public string? RequestBody { get; set; }
     public string? ResponseBody { get; set; }
+    public string? CompressionMetadataJson { get; set; }
 
     public void SetProperties(Dictionary<string, string> properties)
     {

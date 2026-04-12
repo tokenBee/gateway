@@ -1,7 +1,7 @@
 using Dapper;
 using Npgsql;
 
-namespace TokenScope.Features.Observability;
+namespace TokenBee.Features.Observability;
 
 // ──────────────────────────────── DTOs ────────────────────────────────
 

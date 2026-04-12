@@ -1,4 +1,4 @@
-namespace TokenScope.Features.Observability;
+namespace TokenBee.Features.Observability;
 
 public static class ObservabilityExtensions
 {

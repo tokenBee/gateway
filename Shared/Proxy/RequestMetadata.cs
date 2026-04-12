@@ -1,4 +1,4 @@
-﻿namespace TokenScope.Shared.Proxy;
+namespace TokenBee.Shared.Proxy;
 
 public record RequestMetadata
 (
@@ -9,9 +9,9 @@ public record RequestMetadata
 
 public static class MetadataExtractor
 {
-    private const string UserIdHeader = "X-TS-User-Id";
-    private const string SessionIdHeader = "X-TS-Session-Id";
-    private const string PropertyPrefix = "X-TS-Property-";
+    private const string UserIdHeader = "X-TB-User-Id";
+    private const string SessionIdHeader = "X-TB-Session-Id";
+    private const string PropertyPrefix = "X-TB-Property-";
 
     public static RequestMetadata Extract(IHeaderDictionary headers)
     {
@@ -20,7 +20,7 @@ public static class MetadataExtractor
 
         var properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        // Collect all X-TS-Property-* headers
+        // Collect all X-TB-Property-* headers
         foreach (var header in headers)
         {
             if (header.Key.StartsWith(PropertyPrefix,

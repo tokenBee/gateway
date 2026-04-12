@@ -1,13 +1,25 @@
 using System.Diagnostics;
 using System.Text.Json;
-using TokenScope.Features.Observability;
+using TokenBee.Features.Observability;
+using TokenBee.Features.Compression;
+using TokenBee.Features.Replay;
 
-namespace TokenScope.Shared.Proxy;
+namespace TokenBee.Shared.Proxy;
 
 public static class ProxyHandler
 {
-    public static async Task Handle(HttpContext ctx,IHttpClientFactory factory,ITraceLogger traceLogger)
+    public static async Task Handle(HttpContext ctx,IHttpClientFactory factory,ITraceLogger traceLogger,ICompressionClient compressionClient,ISpanRecorder spanRecorder)
     {
+        // ─── TokenBee Compression Headers ──────────────────────────────────────────
+        // X-TS-Compression-Mode: agnostic
+        //   Force agnostic compression regardless of content
+        // X-TS-Compression-Mode: query-specific
+        //   Force query-specific compression. Proxy auto-extracts last user message as query.
+        // X-TS-Compression-Rate: 0.5
+        //   Keep 50% of tokens (0-1 format)
+        // X-TS-Compression-Rate: 4
+        //   4x compression (Nx format, same as Compr.ai)
+        // ────────────────────────────────────────────────────────────────────────
         var stopwatch = Stopwatch.StartNew();
 
         // 1. Require X-LLM-Key header
@@ -23,9 +35,47 @@ public static class ProxyHandler
         // 2. Extract metadata from headers
         var metadata = MetadataExtractor.Extract(ctx.Request.Headers);
 
+        // Override UserId from middleware context (API key auth) with fallback to header
+        var userId = ctx.Items["UserId"]?.ToString()
+            ?? ctx.Request.Headers["X-TB-User-Id"].FirstOrDefault();
+        metadata = metadata with { UserId = userId };
+
         // 3. Read request body
         using var reader = new StreamReader(ctx.Request.Body);
         var body = await reader.ReadToEndAsync();
+
+        var modeStr = ctx.Request.Headers["X-TB-Compression-Mode"].FirstOrDefault()?.ToLowerInvariant();
+        var rateStr = ctx.Request.Headers["X-TB-Compression-Rate"].FirstOrDefault();
+        
+        float rate = 0.5f;
+        bool skipCompression = false;
+
+        // 1. Check if explicitly disabled
+        if (modeStr is  null or "off" or "none")
+        {
+            skipCompression = true;
+        }
+        // 2. Parse rate header
+        else if (float.TryParse(rateStr, out float parsed)) 
+        {
+            rate = parsed;
+        }
+
+        // Auto skip if rate is functionally 1.0 (100% retaining)
+        if (rate >= 1.0f) skipCompression = true;
+
+        CompressionResult compression;
+        if (skipCompression)
+        {
+            int estimatedTokens = body.Length / 4;
+            compression = new CompressionResult(body, estimatedTokens, estimatedTokens, 0, 1.0, false);
+        }
+        else
+        {
+            compression = await compressionClient.CompressAsync(body, rate, modeStr ?? "auto", ctx.RequestAborted);
+        }
+        
+        body = compression.CompressedBody;
 
         // 4. Route to correct provider
         var model = ProviderRouter.ExtractModel(body);
@@ -80,12 +130,25 @@ public static class ProxyHandler
             await llmResponse.Content.CopyToAsync(ctx.Response.Body);
             stopwatch.Stop();
 
-            var inputTokens = body.Length / 4;
             var outputTokens = 0;
 
-            _ = LogTrace(traceLogger, path, model, metadata, inputTokens, outputTokens,
+            _ = LogTrace(traceLogger, path, model, metadata, outputTokens,
                 (int)llmResponse.StatusCode, stopwatch.ElapsedMilliseconds, isStreaming,
-                body, null);
+                body, null, compression);
+
+            // Record span for replay (fire-and-forget)
+            if (!string.IsNullOrEmpty(metadata.SessionId))
+            {
+                _ = spanRecorder.RecordLlmCallAsync(
+                    sessionId:     metadata.SessionId,
+                    inputPayload:  body,
+                    outputPayload: string.Empty,
+                    durationMs:    (int)stopwatch.ElapsedMilliseconds,
+                    tokens:        compression.CompressedTokens + outputTokens,
+                    model:         model,
+                    wasCompressed: compression.WasCompressed,
+                    savedTokens:   compression.SavedTokens);
+            }
         }
         else
         {
@@ -94,11 +157,25 @@ public static class ProxyHandler
             await ctx.Response.WriteAsync(responseBody);
             stopwatch.Stop();
 
-            var (inputTokens, outputTokens) = ExtractTokens(responseBody);
+            var (_, outputTokens) = ExtractTokens(responseBody);
 
-            _ = LogTrace(traceLogger, path, model, metadata, inputTokens, outputTokens,
+            _ = LogTrace(traceLogger, path, model, metadata, outputTokens,
                 (int)llmResponse.StatusCode, stopwatch.ElapsedMilliseconds, isStreaming,
-                body, responseBody);
+                body, responseBody, compression);
+
+            // Record span for replay (fire-and-forget)
+            if (!string.IsNullOrEmpty(metadata.SessionId))
+            {
+                _ = spanRecorder.RecordLlmCallAsync(
+                    sessionId:     metadata.SessionId,
+                    inputPayload:  body,
+                    outputPayload: responseBody,
+                    durationMs:    (int)stopwatch.ElapsedMilliseconds,
+                    tokens:        compression.CompressedTokens + outputTokens,
+                    model:         model,
+                    wasCompressed: compression.WasCompressed,
+                    savedTokens:   compression.SavedTokens);
+            }
         }
     }
 
@@ -109,10 +186,13 @@ public static class ProxyHandler
             ? value[..MaxBodyLength]
             : value;
 
-    private static Task LogTrace(ITraceLogger traceLogger,string? path,string model,RequestMetadata metadata,int inputTokens,int outputTokens,int statusCode,long latencyMs,bool isStreaming,string? requestBody,string? responseBody)
+    private static Task LogTrace(ITraceLogger traceLogger,string? path,string model,RequestMetadata metadata,int outputTokens,int statusCode,long latencyMs,bool isStreaming,string? requestBody,string? responseBody, CompressionResult compression)
     {
         var (inputCost, outputCost, totalCost) =
-            CostCalculator.Calculate(model, inputTokens, outputTokens);
+            CostCalculator.Calculate(model, compression.CompressedTokens, outputTokens);
+            
+        var (origInputCost, _, origTotalCost) =
+            CostCalculator.Calculate(model, compression.OriginalTokens, outputTokens);
 
         var trace = new TraceRecord
         {
@@ -121,23 +201,34 @@ public static class ProxyHandler
             Path = path ?? string.Empty,
             Model = model,
             Provider = DetectProviderName(model),
-            InputTokens = inputTokens,
+            InputTokens = compression.CompressedTokens,
             OutputTokens = outputTokens,
-            OriginalTokens = inputTokens,
-            CompressedTokens = inputTokens,
+            OriginalTokens = compression.OriginalTokens,
+            CompressedTokens = compression.CompressedTokens,
             InputCostUsd = inputCost,
             OutputCostUsd = outputCost,
             TotalCostUsd = totalCost,
-            SavedCostUsd = 0m,
+            SavedCostUsd = origTotalCost - totalCost,
             LatencyMs = (int)latencyMs,
             StatusCode = statusCode,
-            WasCompressed = false,
+            WasCompressed = compression.WasCompressed,
             IsStreaming = isStreaming,
             UserId = metadata.UserId,
             SessionId = metadata.SessionId,
             RequestBody = Truncate(requestBody),
             ResponseBody = Truncate(responseBody)
         };
+
+        if (compression.WasCompressed)
+        {
+            var compMeta = new
+            {
+                compressionMode = compression.ModeUsed,
+                compressionQuery = compression.QueryUsed,
+                autoQuery = compression.AutoQuery
+            };
+            trace.CompressionMetadataJson = JsonSerializer.Serialize(compMeta);
+        }
 
         trace.SetProperties(metadata.Properties);
 
@@ -182,13 +273,12 @@ public static class ProxyHandler
 
     private static string DetectProviderName(string model)
     {
-        if (model.StartsWith("claude-", StringComparison.OrdinalIgnoreCase))
-            return "anthropic";
-
-        if (model.StartsWith("llama-", StringComparison.OrdinalIgnoreCase) ||
-            model.StartsWith("mixtral-", StringComparison.OrdinalIgnoreCase) ||
-            model.StartsWith("gemma-", StringComparison.OrdinalIgnoreCase))
-            return "groq";
+        var m = model.ToLowerInvariant();
+        if (m.StartsWith("claude-")) return "anthropic";
+        if (m.Contains("sonar")) return "perplexity";
+        if (m.StartsWith("mistral-") || m.StartsWith("pixtral-")) return "mistral";
+        if (m.Contains("gemini-")) return "google";
+        if (m.StartsWith("llama-") || m.StartsWith("mixtral-") || m.StartsWith("gemma-")) return "groq";
 
         return "openai";
     }
