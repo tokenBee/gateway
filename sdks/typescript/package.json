@@ -8,7 +8,7 @@
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
-  "author": "TokenBee Inc.",
+  "author": "TokenBee Inc. <hello@tokenbee.dev>",
   "license": "MIT",
   "devDependencies": {
     "typescript": "^5.0.0"
