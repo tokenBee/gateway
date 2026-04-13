@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using Dapper;
 using Npgsql;
 
@@ -8,10 +9,11 @@ public interface ITraceLogger
     Task LogAsync(TraceRecord trace);
 }
 
-public class TraceLogger : ITraceLogger
+public class TraceLogger : BackgroundService, ITraceLogger
 {
     private readonly string _connectionString;
     private readonly ILogger<TraceLogger> _logger;
+    private readonly Channel<TraceRecord> _channel;
 
     private const string InsertSql = """
         INSERT INTO traces (
@@ -36,19 +38,37 @@ public class TraceLogger : ITraceLogger
         _connectionString = configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Missing ConnectionStrings:Default");
         _logger = logger;
+        _channel = Channel.CreateUnbounded<TraceRecord>(new UnboundedChannelOptions
+        {
+            SingleReader = true,
+            SingleWriter = false
+        });
     }
 
-    public async Task LogAsync(TraceRecord trace)
+    public Task LogAsync(TraceRecord trace)
     {
-        try
+        if (!_channel.Writer.TryWrite(trace))
+            _logger.LogWarning("Failed to enqueue trace {TraceId} for model {Model}", trace.Id, trace.Model);
+        
+        return Task.CompletedTask;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Async Trace Writer started.");
+        
+        await foreach (var trace in _channel.Reader.ReadAllAsync(stoppingToken))
         {
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.ExecuteAsync(InsertSql, trace);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to log trace {TraceId} for model {Model}",
-                trace.Id, trace.Model);
+            try
+            {
+                await using var connection = new NpgsqlConnection(_connectionString);
+                await connection.ExecuteAsync(InsertSql, trace);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to log trace {TraceId} for model {Model} to DB",
+                    trace.Id, trace.Model);
+            }
         }
     }
 }

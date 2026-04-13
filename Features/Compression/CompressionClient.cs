@@ -25,7 +25,7 @@ public record CompressionResult(
 
 public interface ICompressionClient
 {
-    Task<CompressionResult> CompressAsync(string requestBody, float rate = 0.5f, string mode = "auto", CancellationToken ct = default);
+    Task<CompressionResult> CompressAsync(string requestBody, float rate = 0.5f, CancellationToken ct = default);
 }
 
 public class CompressionClient : ICompressionClient
@@ -44,6 +44,27 @@ public class CompressionClient : ICompressionClient
         _configuration = configuration;
         _logger = logger;
         _options = configuration.GetSection("Compression").Get<CompressionOptions>() ?? new CompressionOptions();
+    }
+
+    private volatile bool _isHealthy = true;
+    private DateTime _nextHealthCheck = DateTime.MinValue;
+
+    private async Task<bool> ProbeHealthAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromMilliseconds(500)); // Short timeout for health probe
+            
+            using var client = _httpClientFactory.CreateClient("compressor");
+            client.BaseAddress = new Uri(_options.SidecarUrl);
+            var response = await client.GetAsync("/health", cts.Token);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
     }
     
     private static string? ExtractLastUserMessage(string requestBody)
@@ -72,13 +93,32 @@ public class CompressionClient : ICompressionClient
         catch { return null; }
     }
 
-    public async Task<CompressionResult> CompressAsync(string requestBody, float rate = 0.5f, string mode = "auto", CancellationToken ct = default)
+    public async Task<CompressionResult> CompressAsync(string requestBody, float rate = 0.5f, CancellationToken ct = default)
     {
         int estimatedTokens = requestBody.Length / 4;
 
         if (estimatedTokens < _options.ThresholdTokens)
         {
             return new CompressionResult(requestBody, estimatedTokens, estimatedTokens, 0, 1.0, false);
+        }
+
+        if (!_isHealthy)
+        {
+            if (DateTime.UtcNow < _nextHealthCheck)
+            {
+                return new CompressionResult(requestBody, estimatedTokens, estimatedTokens, 0, 1.0, false);
+            }
+            
+            if (await ProbeHealthAsync(ct))
+            {
+                _isHealthy = true;
+                _logger.LogInformation("Compression sidecar recovered. Resuming compression.");
+            }
+            else
+            {
+                _nextHealthCheck = DateTime.UtcNow.AddSeconds(10);
+                return new CompressionResult(requestBody, estimatedTokens, estimatedTokens, 0, 1.0, false);
+            }
         }
 
         try
@@ -95,7 +135,6 @@ public class CompressionClient : ICompressionClient
                 prompt = requestBody, 
                 rate = rate,
                 query = query,
-                mode = mode,
                 coarse = false
             };
             
@@ -125,7 +164,9 @@ public class CompressionClient : ICompressionClient
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Compression sidecar request failed.");
+            _logger.LogWarning(ex, "Compression sidecar request failed. Marking as unhealthy for 10 seconds.");
+            _isHealthy = false;
+            _nextHealthCheck = DateTime.UtcNow.AddSeconds(10);
         }
 
         // Fallback

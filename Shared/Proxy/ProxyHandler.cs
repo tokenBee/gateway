@@ -11,14 +11,10 @@ public static class ProxyHandler
     public static async Task Handle(HttpContext ctx,IHttpClientFactory factory,ITraceLogger traceLogger,ICompressionClient compressionClient,ISpanRecorder spanRecorder)
     {
         // ─── TokenBee Compression Headers ──────────────────────────────────────────
-        // X-TS-Compression-Mode: agnostic
-        //   Force agnostic compression regardless of content
-        // X-TS-Compression-Mode: query-specific
-        //   Force query-specific compression. Proxy auto-extracts last user message as query.
-        // X-TS-Compression-Rate: 0.5
-        //   Keep 50% of tokens (0-1 format)
-        // X-TS-Compression-Rate: 4
-        //   4x compression (Nx format, same as Compr.ai)
+        // X-TokenBee-Compression: auto
+        // X-TokenBee-Rate: 0.5
+        // X-TokenBee-Model: gpt-4o (explicit override)
+        // X-TokenBee-Privacy: true (disables all logging)
         // ────────────────────────────────────────────────────────────────────────
         var stopwatch = Stopwatch.StartNew();
 
@@ -44,14 +40,19 @@ public static class ProxyHandler
         using var reader = new StreamReader(ctx.Request.Body);
         var body = await reader.ReadToEndAsync();
 
-        var modeStr = ctx.Request.Headers["X-TB-Compression-Mode"].FirstOrDefault()?.ToLowerInvariant();
-        var rateStr = ctx.Request.Headers["X-TB-Compression-Rate"].FirstOrDefault();
+        var compressionStr = ctx.Request.Headers["X-TokenBee-Compression"].FirstOrDefault()?.ToLowerInvariant();
+        var rateStr = ctx.Request.Headers["X-TokenBee-Rate"].FirstOrDefault();
+        var modelHeader = ctx.Request.Headers["X-TokenBee-Model"].FirstOrDefault();
+        var providerHeader = ctx.Request.Headers["X-TokenBee-Provider"].FirstOrDefault();
+        var privacyStr = ctx.Request.Headers["X-TokenBee-Privacy"].FirstOrDefault()?.ToLowerInvariant();
+        
+        bool isPrivate = privacyStr is "true" or "1";
         
         float rate = 0.5f;
         bool skipCompression = false;
 
         // 1. Check if explicitly disabled
-        if (modeStr is  null or "off" or "none")
+        if (compressionStr is "off" or "none" or "false")
         {
             skipCompression = true;
         }
@@ -72,14 +73,17 @@ public static class ProxyHandler
         }
         else
         {
-            compression = await compressionClient.CompressAsync(body, rate, modeStr ?? "auto", ctx.RequestAborted);
+            compression = await compressionClient.CompressAsync(body, rate, ctx.RequestAborted);
         }
         
         body = compression.CompressedBody;
 
         // 4. Route to correct provider
-        var model = ProviderRouter.ExtractModel(body);
-        var provider = ProviderRouter.Route(model, llmKey);
+        var model = !string.IsNullOrEmpty(modelHeader) 
+            ? modelHeader 
+            : ProviderRouter.ExtractModel(body);
+
+        var provider = ProviderRouter.Route(model, llmKey, providerHeader);
 
         // 5. Detect streaming
         var isStreaming = DetectStreaming(body);
@@ -137,7 +141,7 @@ public static class ProxyHandler
                 body, null, compression);
 
             // Record span for replay (fire-and-forget)
-            if (!string.IsNullOrEmpty(metadata.SessionId))
+            if (!string.IsNullOrEmpty(metadata.SessionId) && !isPrivate)
             {
                 _ = spanRecorder.RecordLlmCallAsync(
                     sessionId:     metadata.SessionId,
@@ -164,7 +168,7 @@ public static class ProxyHandler
                 body, responseBody, compression);
 
             // Record span for replay (fire-and-forget)
-            if (!string.IsNullOrEmpty(metadata.SessionId))
+            if (!string.IsNullOrEmpty(metadata.SessionId) && !isPrivate)
             {
                 _ = spanRecorder.RecordLlmCallAsync(
                     sessionId:     metadata.SessionId,

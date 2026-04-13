@@ -6,7 +6,10 @@ public static class ObservabilityExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddSingleton<ITraceLogger, TraceLogger>();
+        services.AddSingleton<TraceLogger>();
+        services.AddSingleton<ITraceLogger>(sp => sp.GetRequiredService<TraceLogger>());
+        services.AddHostedService(sp => sp.GetRequiredService<TraceLogger>());
+        
         services.AddScoped<MetricsQueries>();
         return services;
     }

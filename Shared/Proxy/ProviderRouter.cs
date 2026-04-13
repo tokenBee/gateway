@@ -31,9 +31,66 @@ namespace TokenBee.Shared.Proxy
             return "unknown";
         }
 
-        public static ProviderConfig Route(string model, string llmKey)
+        public static ProviderConfig Route(string model, string llmKey, string? explicitProvider = null)
         {
             var m = model.ToLowerInvariant();
+            var p = explicitProvider?.ToLowerInvariant();
+
+            // Explicit routing if provider is provided
+            if (p == "anthropic" || p == "claude")
+            {
+                 return new ProviderConfig(
+                    BaseUrl: "https://api.anthropic.com",
+                    AuthHeader: "x-api-key",
+                    AuthValue: llmKey,
+                    ExtraHeaders: new Dictionary<string, string>
+                    {
+                        ["anthropic-version"] = "2023-06-01"
+                    }
+                );
+            }
+            if (p == "openai")
+            {
+                return new ProviderConfig(
+                    BaseUrl: "https://api.openai.com",
+                    AuthHeader: "Authorization",
+                    AuthValue: $"Bearer {llmKey}"
+                );
+            }
+            if (p == "perplexity")
+            {
+                return new ProviderConfig(
+                    BaseUrl: "https://api.perplexity.ai",
+                    AuthHeader: "Authorization",
+                    AuthValue: $"Bearer {llmKey}"
+                );
+            }
+            if (p == "mistral")
+            {
+                return new ProviderConfig(
+                    BaseUrl: "https://api.mistral.ai",
+                    AuthHeader: "Authorization",
+                    AuthValue: $"Bearer {llmKey}"
+                );
+            }
+            if (p == "google" || p == "gemini")
+            {
+                return new ProviderConfig(
+                    BaseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+                    AuthHeader: "Authorization",
+                    AuthValue: $"Bearer {llmKey}"
+                );
+            }
+            if (p == "groq")
+            {
+               return new ProviderConfig(
+                    BaseUrl: "https://api.groq.com/openai",
+                    AuthHeader: "Authorization",
+                    AuthValue: $"Bearer {llmKey}"
+                );
+            }
+
+            // Fallback to auto-detection from model name
 
             // Anthropic
             if (m.StartsWith("claude-"))
