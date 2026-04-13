@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: tokenbee
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tokenbee-network
+
+  compressor:
+    build:
+      context: ./compression-sidecar
+    ports:
+      - "8001:8001"
+    volumes:
+      - compressor-cache:/app/model-cache
+    environment:
+      HF_HOME: /app/model-cache
+      COMPRESSION_MODE: "query-specific"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 600s
+    networks:
+      - tokenbee-network
+
+  api:
+    build:
+      context: ./TokenScope
+    ports:
+      - "5137:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      compressor:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=tokenbee;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      Compression__SidecarUrl: http://compressor:8001
+      Compression__ThresholdTokens: 1000
+    networks:
+      - tokenbee-network
+
+
+volumes:
+  postgres-data:
+  compressor-cache:
+
+networks:
+  tokenbee-network:
+    name: tokenbee-network

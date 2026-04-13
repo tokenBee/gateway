@@ -1,0 +1,58 @@
+CREATE TABLE IF NOT EXISTS traces (
+    id UUID PRIMARY KEY,
+    timestamp TIMESTAMP NOT NULL,
+    path VARCHAR(255) NOT NULL,
+    model VARCHAR(100) NOT NULL,
+    provider VARCHAR(50) NOT NULL,
+    input_tokens INT NOT NULL,
+    output_tokens INT NOT NULL,
+    original_tokens INT NOT NULL,
+    compressed_tokens INT NOT NULL,
+    input_cost_usd DECIMAL(18,6) NOT NULL,
+    output_cost_usd DECIMAL(18,6) NOT NULL,
+    total_cost_usd DECIMAL(18,6) NOT NULL,
+    saved_cost_usd DECIMAL(18,6) NOT NULL,
+    latency_ms INT NOT NULL,
+    status_code INT NOT NULL,
+    was_compressed BOOLEAN NOT NULL,
+    is_streaming BOOLEAN NOT NULL,
+    user_id VARCHAR(100),
+    session_id VARCHAR(100),
+    properties_json JSONB,
+    request_body TEXT,
+    response_body TEXT,
+    compression_metadata_json TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_traces_timestamp ON traces (timestamp);
+CREATE INDEX IF NOT EXISTS idx_traces_model ON traces (model);
+
+-- Story 12: Session + Span Recording (Replay)
+DROP TABLE IF EXISTS spans;
+DROP TABLE IF EXISTS sessions;
+
+CREATE TABLE IF NOT EXISTS sessions (
+    id           VARCHAR(255) PRIMARY KEY,
+    name         VARCHAR(255),
+    agent_type   VARCHAR(100),
+    started_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ended_at     TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_started_at ON sessions(started_at);
+
+CREATE TABLE IF NOT EXISTS spans (
+    id             UUID PRIMARY KEY,
+    session_id     VARCHAR(255) NOT NULL REFERENCES sessions(id),
+    type           VARCHAR(50)  NOT NULL DEFAULT 'LlmCall',
+    timestamp      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    duration_ms    INT          NOT NULL DEFAULT 0,
+    input_payload  TEXT,
+    output_payload TEXT,
+    tokens         INT          NOT NULL DEFAULT 0,
+    metadata_json  TEXT,
+    parent_span_id VARCHAR(255)
+);
+
+CREATE INDEX IF NOT EXISTS idx_spans_session_id ON spans(session_id);
+CREATE INDEX IF NOT EXISTS idx_spans_timestamp ON spans(timestamp);
