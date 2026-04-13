@@ -177,3 +177,4 @@ cython_debug/
 # TokenBee Specific
 model-cache/
 .gemini/
+node_modules/
