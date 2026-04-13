@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "tokenbee-sdk"
 version = "0.1.0"
 authors = [
-  { name="TokenBee Inc.", email="hello@tokenbee.dev" },
+  { name="TokenBee Inc.", email="hussainmaheen88@gmail.com" },
 ]
 description = "Official Python SDK for TokenBee LLM inference gateway and observability."
 readme = "README.md"
@@ -21,5 +21,5 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/tokenbee/tokenbee-python"
-"Bug Tracker" = "https://github.com/tokenbee/tokenbee-python/issues"
+"Homepage" = "https://github.com/MUHAMMEDHUSSAIN11/TokenBee"
+"Bug Tracker" = "https://github.com/MUHAMMEDHUSSAIN11/TokenBee/issues"
