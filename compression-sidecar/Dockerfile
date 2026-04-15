@@ -15,4 +15,4 @@ COPY main.py .
 ENV HF_HOME=/app/model-cache
 
 EXPOSE 8080
-CMD ["sh", "-c", "gunicorn -w 1 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:$PORT --timeout 120"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
