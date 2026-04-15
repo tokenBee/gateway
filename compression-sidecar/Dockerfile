@@ -11,7 +11,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py .
 
 ENV HF_HOME=/app/model-cache
-VOLUME /app/model-cache
 
 EXPOSE 8001
 
