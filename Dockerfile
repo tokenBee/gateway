@@ -1,12 +1,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY ["TokenScope.csproj", "./"]
-RUN dotnet restore "TokenScope.csproj"
+COPY ["TokenBee.csproj", "./"]
+RUN dotnet restore "TokenBee.csproj"
 COPY . .
-RUN dotnet publish "TokenScope.csproj" -c Release -o /app/publish
+RUN dotnet publish "TokenBee.csproj" -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "TokenScope.dll"]
+ENTRYPOINT ["dotnet", "TokenBee.dll"]

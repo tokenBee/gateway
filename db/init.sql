@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS traces (
     id UUID PRIMARY KEY,
-    timestamp TIMESTAMP NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     path VARCHAR(255) NOT NULL,
     model VARCHAR(100) NOT NULL,
     provider VARCHAR(50) NOT NULL,
@@ -27,10 +27,48 @@ CREATE TABLE IF NOT EXISTS traces (
 CREATE INDEX IF NOT EXISTS idx_traces_timestamp ON traces (timestamp);
 CREATE INDEX IF NOT EXISTS idx_traces_model ON traces (model);
 
--- Story 12: Session + Span Recording (Replay)
-DROP TABLE IF EXISTS spans;
-DROP TABLE IF EXISTS sessions;
+-- Auth & Keys
+CREATE TABLE IF NOT EXISTS api_keys (
+    id UUID PRIMARY KEY,
+    user_id VARCHAR(100) NOT NULL,
+    key_hash VARCHAR(255) NOT NULL,
+    key_prefix VARCHAR(16) NOT NULL,
+    name VARCHAR(255),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_used_at TIMESTAMPTZ
+);
 
+CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id);
+CREATE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
+
+-- Subscriptions & Billing
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id UUID PRIMARY KEY,
+    user_id VARCHAR(100) UNIQUE NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'free',
+    requests_this_month INT NOT NULL DEFAULT 0,
+    free_requests_used INT NOT NULL DEFAULT 0,
+    stripe_customer_id VARCHAR(255),
+    stripe_subscription_id VARCHAR(255),
+    current_period_start TIMESTAMPTZ,
+    current_period_end TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+
+CREATE TABLE IF NOT EXISTS usage_events (
+    id UUID PRIMARY KEY,
+    user_id VARCHAR(100) NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    request_count INT NOT NULL DEFAULT 1,
+    reported_to_stripe BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_usage_events_user_id ON usage_events(user_id);
+
+-- Session + Span Recording (Replay)
 CREATE TABLE IF NOT EXISTS sessions (
     id           VARCHAR(255) PRIMARY KEY,
     name         VARCHAR(255),
