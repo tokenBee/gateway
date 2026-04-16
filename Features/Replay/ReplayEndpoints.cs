@@ -25,7 +25,7 @@ public static class ReplayEndpoints
         group.MapGet("/sessions/{id}",         GetSessionById);
         group.MapGet("/sessions/{id}/timeline", GetTimeline);
         group.MapPost("/sessions",             CreateSession);
-        group.MapMethods("/sessions/{id}/end", new[] { "PATCH" }, EndSession);
+        group.MapMethods("/sessions/{id}/end", ["PATCH"], EndSession);
         group.MapPost("/spans",                CreateSpan);
         group.MapGet("/spans/{id}/payload",    GetSpanPayload);
 
@@ -249,8 +249,6 @@ public static class ReplayEndpoints
 
             if (!exists)
                 return Results.NotFound(new { error = $"Session {id} not found" });
-
-            private record SessionSummaryRow(string Id, string Name, string AgentType, DateTimeOffset StartedAt, DateTimeOffset? EndedAt, int SpanCount, int TotalTokens, int DurationMs, DateTimeOffset? LastActivity);
 
             var sessionSql = """
                 SELECT started_at AS StartedAt, ended_at AS EndedAt
