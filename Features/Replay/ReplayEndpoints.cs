@@ -250,6 +250,8 @@ public static class ReplayEndpoints
             if (!exists)
                 return Results.NotFound(new { error = $"Session {id} not found" });
 
+            private record SessionSummaryRow(string Id, string Name, string AgentType, DateTimeOffset StartedAt, DateTimeOffset? EndedAt, int SpanCount, int TotalTokens, int DurationMs, DateTimeOffset? LastActivity);
+
             var sessionSql = """
                 SELECT started_at AS StartedAt, ended_at AS EndedAt
                 FROM sessions WHERE id = @Id
