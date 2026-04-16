@@ -8,7 +8,7 @@ namespace TokenBee.Features.Auth;
 
 public record ApiKeyResult(string PlainKey, string Prefix, string Id);
 public record ValidatedKey(string UserId, string KeyId);
-public record ApiKeyDto(Guid Id, string Prefix, string Name, bool IsActive, DateTimeOffset CreatedAt, DateTimeOffset? LastUsedAt);
+public record ApiKeyDto(Guid Id, string Prefix, string Name, bool IsActive, DateTime CreatedAt, DateTime? LastUsedAt);
 
 // ─── Interface ──────────────────────────────────────────────────
 

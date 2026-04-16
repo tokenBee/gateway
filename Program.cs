@@ -18,16 +18,18 @@ try
     builder.Host.UseSerilog();
 
     // CORS for dashboard frontend
-    builder.Services.AddCors(options => {
-        options.AddDefaultPolicy(policy => {
-            policy.WithOrigins("http://localhost:3000") // Dashboard origin
+    builder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+        {
+            policy.WithOrigins(
+                    "https://www.tokenbee.io",
+                    "https://tokenbee.io",
+                    "https://tokenbee-dashboard.vercel.app"
+                  )
                   .AllowAnyMethod()
-                  .WithHeaders("Content-Type",
-                               "X-LLM-Key",
-                               "X-TB-User-Id",
-                               "X-TokenBee-Key",
-                               "X-TB-Property-Feature",
-                               "X-TB-Property-Environment"); // <--- CRITICAL
+                  .AllowAnyHeader()
+                  .AllowCredentials();
         });
     });
 
