@@ -1,9 +1,8 @@
-using Microsoft.Extensions.Http;
 using Polly;
 using Serilog;
 using TokenBee.Features.Auth;
-using TokenBee.Features.Observability;
 using TokenBee.Features.Compression;
+using TokenBee.Features.Observability;
 using TokenBee.Features.Replay;
 using TokenBee.Shared.Auth;
 using TokenBee.Shared.Proxy;

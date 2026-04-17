@@ -57,10 +57,12 @@ export interface TokenBeeOptions {
 
 export class TokenBee {
   private apiKey: string;
+  private llmKey: string;
   private options: TokenBeeOptions;
 
-  constructor(config: { apiKey: string, options?: TokenBeeOptions }) {
+  constructor(config: { apiKey: string, llmKey: string, options?: TokenBeeOptions }) {
     this.apiKey = config.apiKey;
+    this.llmKey = config.llmKey;
     this.options = config.options || {};
   }
 
@@ -72,6 +74,7 @@ export class TokenBee {
     const baseUrl = this.options.baseUrl || "https://api.tokenbee.dev/v1";
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${this.apiKey}`,
+      "X-LLM-Key": this.llmKey,
       "Content-Type": "application/json",
       "X-TokenBee-Compression": params.input.compression || this.options.compression || "auto",
       "X-TokenBee-Rate": params.input.rate || this.options.rate || CompressionRate.Medium,

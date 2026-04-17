@@ -50,7 +50,8 @@ class TokenBeeModel(str, Enum):
 class TokenBee:
     def __init__(
         self, 
-        api_key: str, 
+        api_key: str,
+        llm_key: str,
         base_url: str = "https://api.tokenbee.dev/v1", 
         compression: str = "auto", 
         rate: str = CompressionRate.MEDIUM, 
@@ -59,9 +60,11 @@ class TokenBee:
         privacy: bool = False
     ):
         self.api_key = api_key
+        self.llm_key = llm_key
         self.base_url = base_url
         self.headers = {
             "Authorization": f"Bearer {api_key}",
+            "X-LLM-Key": llm_key,
             "X-TokenBee-Compression": compression,
             "X-TokenBee-Rate": rate,
             "X-TokenBee-Privacy": str(privacy).lower()
