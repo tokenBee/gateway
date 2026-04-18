@@ -1,6 +1,6 @@
 {
   "name": "@tokenbee/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Official TypeScript SDK for TokenBee LLM inference gateway and observability.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,7 +8,7 @@
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
-  "author": "TokenBee Inc. <hello@tokenbee.dev>",
+  "author": "TokenBee Inc. <founders@tokenbee.io>",
   "license": "MIT",
   "devDependencies": {
     "typescript": "^5.0.0"
