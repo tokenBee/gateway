@@ -59,8 +59,8 @@ public class ApiKeyMiddleware(RequestDelegate next, ILogger<ApiKeyMiddleware> lo
         }
 
         // Check subscription / free tier limit
-        var subscription = await subscriptionService.GetOrCreateAsync(validatedKey.UserId);
-
+        // Temporarily disabled for Beta Launch
+        /*
         if (subscription.IsOverFreeLimit)
         {
             ctx.Response.StatusCode = 429;
@@ -71,6 +71,7 @@ public class ApiKeyMiddleware(RequestDelegate next, ILogger<ApiKeyMiddleware> lo
             });
             return;
         }
+        */
 
         // Set context items for downstream handlers
         ctx.Items["UserId"] = validatedKey.UserId;
