@@ -10,7 +10,7 @@ setup(
     packages=find_packages(),
     install_requires=["httpx>=0.23.0"],
     author="TokenBee Inc.",
-    author_email="hello@tokenbee.dev",
+    author_email="founders@tokenbee.io",
     description="Official Python SDK for TokenBee LLM inference gateway and observability.",
     long_description=long_description,
     long_description_content_type="text/markdown",
