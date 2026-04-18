@@ -20,9 +20,11 @@ pip install tokenbee-sdk
 ```python
 from tokenbee import TokenBee, TokenBeeModel, CompressionRate
 
-# Initialize the client
+# Initialize the client with your TokenBee API key 
+# AND your LLM provider key (Bring Your Own Key - BYOK)
 client = TokenBee(
-    api_key="your_api_key_here",
+    api_key="your_tokenbee_api_key",
+    llm_key="your_llm_provider_key", # e.g. OpenAI or Anthropic key
     compression="auto",
     rate=CompressionRate.MEDIUM
 )
@@ -39,6 +41,10 @@ response = client.send(
 
 print(response["choices"][0]["message"]["content"])
 ```
+
+## Bring Your Own Key (BYOK)
+
+TokenBee is a **stateless** gateway. We do not store your LLM provider API keys in our database. You pass your provider key (OpenAI, Anthropic, etc.) through the SDK's `llm_key` parameter. The SDK sends this in the `X-LLM-Key` header, allowing the TokenBee proxy to forward requests to the provider on your behalf while you maintain full control over your billing and security.
 
 ## Advanced Usage
 

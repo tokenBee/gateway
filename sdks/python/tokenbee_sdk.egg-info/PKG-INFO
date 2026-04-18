@@ -1,9 +1,9 @@
 Metadata-Version: 2.4
 Name: tokenbee-sdk
-Version: 0.1.0
+Version: 0.2.0
 Summary: Official Python SDK for TokenBee LLM inference gateway and observability.
 Author: TokenBee Inc.
-Author-email: "TokenBee Inc." <hello@tokenbee.dev>
+Author-email: "TokenBee Inc." <founders@tokenbee.io>
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent

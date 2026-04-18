@@ -1,0 +1,49 @@
+# TokenBee TypeScript SDK
+
+Official TypeScript/JavaScript SDK for [TokenBee](https://tokenbee.dev) - The Intelligent LLM Inference Gateway with Observability, Compression, and Privacy.
+
+## Features
+
+- **Unified API**: Access multiple LLM providers (OpenAI, Anthropic, Google, Mistral, etc.) through a single interface.
+- **Intelligent Compression**: Reduce token usage and latency with context-aware compression.
+- **Privacy Guard**: Automatic PII masking and privacy-preserving inference.
+- **Built-in Observability**: Automatic tracking of latency, costs, and token usage.
+
+## Installation
+
+```bash
+npm install @tokenbee/sdk
+```
+
+## Quick Start
+
+```typescript
+import { TokenBee, TokenBeeModel, CompressionRate } from '@tokenbee/sdk';
+
+// Initialize the client with your TokenBee API key 
+// AND your LLM provider key (Bring Your Own Key - BYOK)
+const client = new TokenBee({
+  apiKey: 'your_tokenbee_api_key',
+  llmKey: 'your_llm_provider_key', // e.g. OpenAI or Anthropic key
+});
+
+// Send a request
+const res = await client.send({
+  model: TokenBeeModel.AnthropicClaude3_5_Sonnet,
+  input: {
+    messages: [{ role: 'user', content: 'Explain quantum entanglement' }],
+    compression: 'auto',
+    rate: CompressionRate.High
+  }
+});
+
+console.log(res);
+```
+
+## Bring Your Own Key (BYOK)
+
+TokenBee is a **stateless** gateway. We do not store your LLM provider API keys in our database. You pass your provider key (OpenAI, Anthropic, etc.) through the SDK's `llmKey` parameter. The SDK sends this in the `X-LLM-Key` header, allowing the TokenBee proxy to forward requests to the provider on your behalf while you maintain full control over your billing and security.
+
+## License
+
+MIT
