@@ -63,6 +63,8 @@ class TokenBee:
         self._base_url = "https://tokenbee.io/v1"
         self.headers = {
             "Authorization": f"Bearer {api_key}",
+            "X-TokenBee-Key": api_key,
+            "X-TB-Key": api_key,
             "X-LLM-Key": llm_key,
             "X-TokenBee-Compression": compression,
             "X-TokenBee-Rate": rate,

@@ -73,6 +73,8 @@ export class TokenBee {
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${this.apiKey}`,
+      "X-TokenBee-Key": this.apiKey,
+      "X-TB-Key": this.apiKey, // Legacy/Alternative
       "X-LLM-Key": this.llmKey,
       "Content-Type": "application/json",
       "X-TokenBee-Compression": params.input.compression || this.options.compression || "auto",
