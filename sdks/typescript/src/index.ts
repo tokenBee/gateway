@@ -52,13 +52,13 @@ export interface TokenBeeOptions {
   model?: TokenBeeModel | string;
   provider?: string;
   privacy?: boolean;
-  baseUrl?: string;
 }
 
 export class TokenBee {
   private apiKey: string;
   private llmKey: string;
   private options: TokenBeeOptions;
+  private readonly baseUrl = "https://tokenbee.io/v1";
 
   constructor(config: { apiKey: string, llmKey: string, options?: TokenBeeOptions }) {
     this.apiKey = config.apiKey;
@@ -71,7 +71,6 @@ export class TokenBee {
     const provider = parts.length > 1 ? parts[0] : (this.options.provider || "openai");
     const modelName = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
 
-    const baseUrl = this.options.baseUrl || "https://api.tokenbee.dev/v1";
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${this.apiKey}`,
       "X-LLM-Key": this.llmKey,
@@ -93,14 +92,15 @@ export class TokenBee {
     delete payload.rate;
     delete payload.privacy;
 
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      throw new Error(`TokenBee HTTP error: ${response.statusText}`);
+      const errorBody = await response.text();
+      throw new Error(`TokenBee HTTP error: ${response.status} ${response.statusText} - ${errorBody}`);
     }
     return response.json();
   }

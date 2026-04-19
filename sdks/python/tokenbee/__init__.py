@@ -52,7 +52,6 @@ class TokenBee:
         self, 
         api_key: str,
         llm_key: str,
-        base_url: str = "https://api.tokenbee.dev/v1", 
         compression: str = "auto", 
         rate: str = CompressionRate.MEDIUM, 
         model: str = "", 
@@ -61,7 +60,7 @@ class TokenBee:
     ):
         self.api_key = api_key
         self.llm_key = llm_key
-        self.base_url = base_url
+        self._base_url = "https://tokenbee.io/v1"
         self.headers = {
             "Authorization": f"Bearer {api_key}",
             "X-LLM-Key": llm_key,
@@ -74,7 +73,7 @@ class TokenBee:
         if provider:
             self.headers["X-TokenBee-Provider"] = provider
 
-        self.client = httpx.Client(headers=self.headers, base_url=self.base_url)
+        self.client = httpx.Client(headers=self.headers, base_url=self._base_url)
 
     def send(self, model: str, input: dict):
         parts = model.split("/")
