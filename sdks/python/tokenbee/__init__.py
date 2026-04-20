@@ -1,3 +1,4 @@
+import os
 import httpx
 from enum import Enum
 
@@ -94,6 +95,7 @@ class TokenBee:
             headers["X-TokenBee-Privacy"] = str(input["privacy"]).lower()
 
         payload = input.copy()
+        payload["model"] = model_name
         payload.pop("compression", None)
         payload.pop("rate", None)
         payload.pop("privacy", None)

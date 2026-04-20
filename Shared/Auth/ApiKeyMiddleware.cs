@@ -82,7 +82,17 @@ public class ApiKeyMiddleware(RequestDelegate next, ILogger<ApiKeyMiddleware> lo
         // After the request completes, increment usage for /v1/* routes
         if (path.StartsWith("/v1", StringComparison.OrdinalIgnoreCase))
         {
-            _ = subscriptionService.IncrementUsageAsync(validatedKey.UserId);
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await subscriptionService.IncrementUsageAsync(validatedKey.UserId);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Background usage increment failed for {UserId}", validatedKey.UserId);
+                }
+            });
         }
     }
 

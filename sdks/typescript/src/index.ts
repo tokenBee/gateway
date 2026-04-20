@@ -58,12 +58,12 @@ export class TokenBee {
   private apiKey: string;
   private llmKey: string;
   private options: TokenBeeOptions;
-  private readonly baseUrl = "https://tokenbee.io/v1";
-
+  private readonly baseUrl: string;
   constructor(config: { apiKey: string, llmKey: string, options?: TokenBeeOptions }) {
     this.apiKey = config.apiKey;
     this.llmKey = config.llmKey;
     this.options = config.options || {};
+    this.baseUrl = "https://tokenbee.io/v1";
   }
 
   async send(params: { model: TokenBeeModel | string, input: any }) {
@@ -80,7 +80,7 @@ export class TokenBee {
       "X-TokenBee-Compression": params.input.compression || this.options.compression || "auto",
       "X-TokenBee-Rate": params.input.rate || this.options.rate || CompressionRate.Medium,
       "X-TokenBee-Model": modelName,
-      "X-TokenBee-Provider": provider,
+      "X-TokenBee-Provider": provider
     };
 
     const privacy = params.input.privacy !== undefined ? params.input.privacy : this.options.privacy;
@@ -88,7 +88,7 @@ export class TokenBee {
       headers["X-TokenBee-Privacy"] = String(privacy);
     }
 
-    const payload = { ...params.input };
+    const payload = { model: modelName, ...params.input };
     // Remove SDK-specific keys from the payload sent to the LLM
     delete payload.compression;
     delete payload.rate;
