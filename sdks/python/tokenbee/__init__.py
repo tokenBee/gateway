@@ -10,6 +10,7 @@ class CompressionRate(str, Enum):
 
 class TokenBeeModel(str, Enum):
     # OpenAI
+    OPENAI_GPT_4_5 = "openai/gpt-4.5-preview"
     OPENAI_GPT_4O = "openai/gpt-4o"
     OPENAI_GPT_4O_MINI = "openai/gpt-4o-mini"
     OPENAI_O1 = "openai/o1"
@@ -17,8 +18,7 @@ class TokenBeeModel(str, Enum):
     OPENAI_O3_MINI = "openai/o3-mini"
 
     # Anthropic
-    ANTHROPIC_CLAUDE_4_6_SONNET = "anthropic/claude-4-6-sonnet-latest"
-    ANTHROPIC_CLAUDE_4_6_OPUS = "anthropic/claude-4-6-opus-latest"
+    ANTHROPIC_CLAUDE_3_7_SONNET = "anthropic/claude-3-7-sonnet-latest"
     ANTHROPIC_CLAUDE_3_5_SONNET = "anthropic/claude-3-5-sonnet-latest"
     ANTHROPIC_CLAUDE_3_5_HAIKU = "anthropic/claude-3-5-haiku-latest"
     ANTHROPIC_CLAUDE_3_OPUS = "anthropic/claude-3-opus-latest"
@@ -26,10 +26,11 @@ class TokenBeeModel(str, Enum):
     # Google
     GEMINI_3_1_PRO = "google/gemini-3.1-pro"
     GEMINI_3_1_FLASH = "google/gemini-3.1-flash"
+    GEMINI_2_5_PRO = "google/gemini-2.5-pro"
     GEMINI_2_0_FLASH = "google/gemini-2.0-flash"
     GEMINI_2_0_PRO = "google/gemini-2.0-pro-exp"
     GEMINI_1_5_PRO = "google/gemini-1.5-pro"
-    GEMINI_1_5_FLASH = "google/gemini-1.5-flash"
+
 
     # Mistral
     MISTRAL_LARGE = "mistral/mistral-large-latest"
@@ -45,8 +46,12 @@ class TokenBeeModel(str, Enum):
     # Groq
     GROQ_LLAMA_3_3_70B = "groq/llama-3.3-70b-versatile"
     GROQ_LLAMA_3_1_8B = "groq/llama-3.1-8b-instant"
-    GROQ_MIXTRAL_8X7B = "groq/mixtral-8x7b-32768"
-    GROQ_GEMMA2_9B = "groq/gemma2-9b-it"
+    GROQ_DEEPSEEK_R1_DISTILL = "groq/deepseek-r1-distill-llama-70b"
+
+    # xAI
+    XAI_GROK_3 = "xai/grok-3"
+    XAI_GROK_2 = "xai/grok-2-1212"
+    XAI_GROK_2_MINI = "xai/grok-2-mini-1212"
 
 class TokenBee:
     def __init__(

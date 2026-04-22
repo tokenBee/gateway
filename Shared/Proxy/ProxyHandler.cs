@@ -292,7 +292,8 @@ public static class ProxyHandler
         if (m.Contains("sonar")) return "perplexity";
         if (m.StartsWith("mistral-") || m.StartsWith("pixtral-")) return "mistral";
         if (m.Contains("gemini-")) return "google";
-        if (m.StartsWith("llama-") || m.StartsWith("mixtral-") || m.StartsWith("gemma-")) return "groq";
+        if (m.StartsWith("llama-") || m.StartsWith("deepseek-r1-distill")) return "groq";
+        if (m.StartsWith("grok-")) return "xai";
 
         return "openai";
     }

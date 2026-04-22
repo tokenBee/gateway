@@ -7,6 +7,7 @@ export enum CompressionRate {
 
 export enum TokenBeeModel {
   // OpenAI
+  OpenAIGPT4_5 = "openai/gpt-4.5-preview",
   OpenAIGPT4o = "openai/gpt-4o",
   OpenAIGPT4oMini = "openai/gpt-4o-mini",
   OpenAIO1 = "openai/o1",
@@ -14,8 +15,7 @@ export enum TokenBeeModel {
   OpenAIO3Mini = "openai/o3-mini",
 
   // Anthropic
-  AnthropicClaude4_6_Sonnet = "anthropic/claude-4-6-sonnet-latest",
-  AnthropicClaude4_6_Opus = "anthropic/claude-4-6-opus-latest",
+  AnthropicClaude3_7_Sonnet = "anthropic/claude-3-7-sonnet-latest",
   AnthropicClaude3_5_Sonnet = "anthropic/claude-3-5-sonnet-latest",
   AnthropicClaude3_5_Haiku = "anthropic/claude-3-5-haiku-latest",
   AnthropicClaude3_Opus = "anthropic/claude-3-opus-latest",
@@ -23,10 +23,11 @@ export enum TokenBeeModel {
   // Google
   Gemini3_1_Pro = "google/gemini-3.1-pro",
   Gemini3_1_Flash = "google/gemini-3.1-flash",
+  Gemini2_5_Pro = "google/gemini-2.5-pro",
   Gemini2Flash = "google/gemini-2.0-flash",
   Gemini2Pro = "google/gemini-2.0-pro-exp",
   Gemini1_5_Pro = "google/gemini-1.5-pro",
-  Gemini1_5_Flash = "google/gemini-1.5-flash",
+
 
   // Mistral
   MistralLarge = "mistral/mistral-large-latest",
@@ -42,8 +43,12 @@ export enum TokenBeeModel {
   // Groq
   GroqLlama3_3_70b = "groq/llama-3.3-70b-versatile",
   GroqLlama3_1_8b = "groq/llama-3.1-8b-instant",
-  GroqMixtral8x7b = "groq/mixtral-8x7b-32768",
-  GroqGemma2_9b = "groq/gemma2-9b-it",
+  GroqDeepSeekR1Distill = "groq/deepseek-r1-distill-llama-70b",
+
+  // xAI
+  XAIGrok3 = "xai/grok-3",
+  XAIGrok2 = "xai/grok-2-1212",
+  XAIGrok2Mini = "xai/grok-2-mini-1212",
 }
 
 export interface TokenBeeOptions {
