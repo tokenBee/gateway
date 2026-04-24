@@ -11,6 +11,7 @@ public static class ObservabilityExtensions
         services.AddHostedService(sp => sp.GetRequiredService<TraceLogger>());
         
         services.AddScoped<MetricsQueries>();
+        services.AddHostedService<TraceCleanupService>();
         return services;
     }
 }

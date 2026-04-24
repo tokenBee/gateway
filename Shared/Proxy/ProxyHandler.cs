@@ -38,6 +38,9 @@ public static class ProxyHandler
                 ?? ctx.Request.Headers["X-TB-User-Id"].FirstOrDefault();
             metadata = metadata with { UserId = userId };
 
+            // 4. Retrieve Subscription for feature gating
+            var sub = ctx.Items["Subscription"] as SubscriptionStatus;
+
             // 3. Read request body
             using var reader = new StreamReader(ctx.Request.Body);
             var body = await reader.ReadToEndAsync();
@@ -66,6 +69,13 @@ public static class ProxyHandler
 
             // Auto skip if rate is functionally 1.0 (100% retaining)
             if (rate >= 1.0f) skipCompression = true;
+
+            // 3. Enforce Tier Limits (Premium Gating)
+            if (sub?.Status == "free" && rate < 0.5f)
+            {
+                // Force free users to 0.5 rate (Standard Compression)
+                rate = 0.5f; 
+            }
 
             CompressionResult compression;
             if (skipCompression)

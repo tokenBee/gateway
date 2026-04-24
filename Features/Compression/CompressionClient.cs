@@ -6,9 +6,10 @@ namespace TokenBee.Features.Compression;
 public class CompressionOptions
 {
     public string SidecarUrl { get; set; } = string.Empty;
+    public string ApiKey { get; set; } = string.Empty; // Internal secret for Railway <-> Hetzner
     public int ThresholdTokens { get; set; } = 1000;
     public float DefaultRate { get; set; } = 0.5f;
-    public int TimeoutMs { get; set; } = 100;
+    public int TimeoutMs { get; set; } = 1000; // Increased for cross-cloud (Railway -> Hetzner)
 }
 
 public record CompressionResult(
@@ -58,6 +59,12 @@ public class CompressionClient : ICompressionClient
             
             using var client = _httpClientFactory.CreateClient("compressor");
             client.BaseAddress = new Uri(_options.SidecarUrl);
+            
+            if (!string.IsNullOrEmpty(_options.ApiKey))
+            {
+                client.DefaultRequestHeaders.Add("X-Sidecar-Token", _options.ApiKey);
+            }
+
             var response = await client.GetAsync("/health", cts.Token);
             return response.IsSuccessStatusCode;
         }
@@ -128,6 +135,11 @@ public class CompressionClient : ICompressionClient
 
             using var client = _httpClientFactory.CreateClient("compressor");
             client.BaseAddress = new Uri(_options.SidecarUrl);
+            
+            if (!string.IsNullOrEmpty(_options.ApiKey))
+            {
+                client.DefaultRequestHeaders.Add("X-Sidecar-Token", _options.ApiKey);
+            }
 
             var query = ExtractLastUserMessage(requestBody);
             
