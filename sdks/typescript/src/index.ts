@@ -68,7 +68,7 @@ export class TokenBee {
     this.apiKey = config.apiKey;
     this.llmKey = config.llmKey;
     this.options = config.options || {};
-    this.baseUrl = "https://tokenbee.io/v1";
+    this.baseUrl = "https://api.tokenbee.io/v1";
   }
 
   async send(params: { model: TokenBeeModel | string, input: any }) {
