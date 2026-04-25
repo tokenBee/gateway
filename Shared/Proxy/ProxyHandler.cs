@@ -9,21 +9,20 @@ namespace TokenBee.Shared.Proxy;
 
 public static class ProxyHandler
 {
-    public static async Task Handle(HttpContext ctx,IHttpClientFactory factory,ITraceLogger traceLogger,ICompressionClient compressionClient,ISpanRecorder spanRecorder,ISubscriptionService subscriptionService)
+    public static async Task Handle(
+        HttpContext ctx,
+        IHttpClientFactory factory,
+        ITraceLogger traceLogger,
+        ICompressionClient compressionClient,
+        ISpanRecorder spanRecorder,
+        ISubscriptionService subscriptionService)
     {
-        try 
+        try
         {
-            // ─── TokenBee Compression Headers ──────────────────────────────────────────
-            // X-TokenBee-Compression: auto
-            // X-TokenBee-Rate: 0.5
-            // X-TokenBee-Model: gpt-4o (explicit override)
-            // X-TokenBee-Privacy: true (disables all logging)
-            // ────────────────────────────────────────────────────────────────────────
             var stopwatch = Stopwatch.StartNew();
 
-            // 1. Require X-LLM-Key header
+            // 1. Validate LLM provider key
             var llmKey = ctx.Request.Headers["X-LLM-Key"].FirstOrDefault();
-
             if (string.IsNullOrEmpty(llmKey))
             {
                 ctx.Response.StatusCode = 400;
@@ -31,18 +30,15 @@ public static class ProxyHandler
                 return;
             }
 
-            // 2. Extract metadata from headers
+            // 2. Extract request metadata and user context
             var metadata = MetadataExtractor.Extract(ctx.Request.Headers);
-
-            // Override UserId from middleware context (API key auth) with fallback to header
             var userId = ctx.Items["UserId"]?.ToString()
                 ?? ctx.Request.Headers["X-TB-User-Id"].FirstOrDefault();
             metadata = metadata with { UserId = userId };
 
-            // 4. Retrieve Subscription for feature gating
             var sub = ctx.Items["Subscription"] as SubscriptionStatus;
 
-            // 3. Read request body
+            // 3. Read request body and parse headers
             using var reader = new StreamReader(ctx.Request.Body);
             var body = await reader.ReadToEndAsync();
 
@@ -51,33 +47,25 @@ public static class ProxyHandler
             var modelHeader = ctx.Request.Headers["X-TokenBee-Model"].FirstOrDefault();
             var providerHeader = ctx.Request.Headers["X-TokenBee-Provider"].FirstOrDefault();
             var privacyStr = ctx.Request.Headers["X-TokenBee-Privacy"].FirstOrDefault()?.ToLowerInvariant();
-            
+
             bool isPrivate = privacyStr is "true" or "1";
-            
+
+            // 4. Determine compression settings
             float rate = 0.5f;
             bool skipCompression = false;
 
-            // 1. Check if explicitly disabled
             if (compressionStr is "off" or "none" or "false")
-            {
                 skipCompression = true;
-            }
-            // 2. Parse rate header
-            else if (float.TryParse(rateStr, out float parsed)) 
-            {
+            else if (float.TryParse(rateStr, out float parsed))
                 rate = parsed;
-            }
 
-            // Auto skip if rate is functionally 1.0 (100% retaining)
             if (rate >= 1.0f) skipCompression = true;
 
-            // 3. Enforce Tier Limits (Premium Gating)
+            // Enforce tier limits: free users are clamped to standard compression
             if (sub?.Status == "free" && rate < 0.5f)
-            {
-                // Force free users to 0.5 rate (Standard Compression)
-                rate = 0.5f; 
-            }
+                rate = 0.5f;
 
+            // 5. Compress prompt (or skip if below threshold / disabled)
             CompressionResult compression;
             if (skipCompression)
             {
@@ -88,24 +76,20 @@ public static class ProxyHandler
             {
                 compression = await compressionClient.CompressAsync(body, rate, ctx.RequestAborted);
             }
-            
+
             body = compression.CompressedBody;
 
-            // 4. Route to correct provider
-            var model = !string.IsNullOrEmpty(modelHeader) 
-                ? modelHeader 
+            // 6. Route to the correct LLM provider
+            var model = !string.IsNullOrEmpty(modelHeader)
+                ? modelHeader
                 : ProviderRouter.ExtractModel(body);
-
             var provider = ProviderRouter.Route(model, llmKey, providerHeader);
-
-            // 5. Detect streaming
             var isStreaming = DetectStreaming(body);
 
-            // 6. Build destination URL
+            // 7. Build and send the outgoing request
             var path = ctx.Request.RouteValues["path"]?.ToString();
             var destination = $"{provider.BaseUrl}/v1/{path}";
 
-            // 7. Build outgoing request
             var client = factory.CreateClient("llm");
             var outgoing = new HttpRequestMessage(HttpMethod.Post, destination)
             {
@@ -113,118 +97,116 @@ public static class ProxyHandler
             };
 
             outgoing.Headers.Add(provider.AuthHeader, provider.AuthValue);
-
             if (provider.ExtraHeaders is not null)
                 foreach (var (key, value) in provider.ExtraHeaders)
                     outgoing.Headers.Add(key, value);
 
-            // 8. Forward to provider
             HttpResponseMessage llmResponse;
             try
             {
                 llmResponse = await client.SendAsync(outgoing, HttpCompletionOption.ResponseHeadersRead);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 ctx.Response.StatusCode = 502;
-                await ctx.Response.WriteAsJsonAsync(new
-                {
-                    error = "LLM unreachable",
-                    detail = ex.Message
-                });
+                await ctx.Response.WriteAsJsonAsync(new { error = "LLM provider unreachable" });
                 return;
             }
 
-            // 9. Return response and log trace
+            // 8. Stream or buffer the response back to the caller
             ctx.Response.StatusCode = (int)llmResponse.StatusCode;
             ctx.Response.ContentType =
                 llmResponse.Content.Headers.ContentType?.ToString()
                 ?? "application/json";
 
+            string? responseBody;
+            int outputTokens;
+
             if (isStreaming)
             {
-                // Streaming: pipe chunks directly, estimate tokens
                 await llmResponse.Content.CopyToAsync(ctx.Response.Body);
                 await ctx.Response.Body.FlushAsync();
                 stopwatch.Stop();
-
-                var outputTokens = 0;
-
-                _ = LogTrace(traceLogger, path, model, metadata, outputTokens,
-                    (int)llmResponse.StatusCode, stopwatch.ElapsedMilliseconds, isStreaming,
-                    body, null, compression);
-
-                // Record span for replay (fire-and-forget)
-                if (!string.IsNullOrEmpty(metadata.SessionId) && !isPrivate)
-                {
-                    _ = spanRecorder.RecordLlmCallAsync(
-                        sessionId:     metadata.SessionId,
-                        inputPayload:  body,
-                        outputPayload: string.Empty,
-                        durationMs:    (int)stopwatch.ElapsedMilliseconds,
-                        tokens:        compression.CompressedTokens + outputTokens,
-                        model:         model,
-                        wasCompressed: compression.WasCompressed,
-                        savedTokens:   compression.SavedTokens);
-                }
-
-                // Increment token usage (fire-and-forget)
-                var totalTokens = compression.CompressedTokens + outputTokens;
-                if (!string.IsNullOrEmpty(userId) && totalTokens > 0)
-                {
-                    _ = Task.Run(async () =>
-                    {
-                        try { await subscriptionService.IncrementUsageAsync(userId, totalTokens); }
-                        catch { /* swallow */ }
-                    });
-                }
+                responseBody = null;
+                outputTokens = 0;
             }
             else
             {
-                // Non-streaming: read full response, extract exact tokens
-                var responseBody = await llmResponse.Content.ReadAsStringAsync();
+                responseBody = await llmResponse.Content.ReadAsStringAsync();
                 await ctx.Response.WriteAsync(responseBody);
                 await ctx.Response.Body.FlushAsync();
                 stopwatch.Stop();
+                (_, outputTokens) = ExtractTokens(responseBody);
+            }
 
-                var (_, outputTokens) = ExtractTokens(responseBody);
-
-                _ = LogTrace(traceLogger, path, model, metadata, outputTokens,
-                    (int)llmResponse.StatusCode, stopwatch.ElapsedMilliseconds, isStreaming,
-                    body, responseBody, compression);
-
-                // Record span for replay (fire-and-forget)
-                if (!string.IsNullOrEmpty(metadata.SessionId) && !isPrivate)
-                {
-                    _ = spanRecorder.RecordLlmCallAsync(
-                        sessionId:     metadata.SessionId,
-                        inputPayload:  body,
-                        outputPayload: responseBody,
-                        durationMs:    (int)stopwatch.ElapsedMilliseconds,
-                        tokens:        compression.CompressedTokens + outputTokens,
-                        model:         model,
-                        wasCompressed: compression.WasCompressed,
-                        savedTokens:   compression.SavedTokens);
-                }
-
-                // Increment token usage (fire-and-forget)
-                var totalTokens = compression.CompressedTokens + outputTokens;
-                if (!string.IsNullOrEmpty(userId) && totalTokens > 0)
-                {
-                    _ = Task.Run(async () =>
-                    {
-                        try { await subscriptionService.IncrementUsageAsync(userId, totalTokens); }
-                        catch { /* swallow */ }
-                    });
-                }
+            // 9. Record trace, replay span, and token usage (fire-and-forget)
+            RecordObservability(
+                traceLogger, spanRecorder, subscriptionService,
+                path, model, metadata, userId, isPrivate,
+                outputTokens, (int)llmResponse.StatusCode,
+                stopwatch.ElapsedMilliseconds, isStreaming,
+                body, responseBody, compression);
+        }
+        catch (Exception)
+        {
+            if (!ctx.Response.HasStarted)
+            {
+                ctx.Response.StatusCode = 500;
+                await ctx.Response.WriteAsJsonAsync(new { error = "Internal server error" });
             }
         }
-        catch (Exception ex) 
+    }
+
+    // ─── Post-Response Observability (Single Responsibility) ────────
+
+    private static void RecordObservability(
+        ITraceLogger traceLogger,
+        ISpanRecorder spanRecorder,
+        ISubscriptionService subscriptionService,
+        string? path,
+        string model,
+        RequestMetadata metadata,
+        string? userId,
+        bool isPrivate,
+        int outputTokens,
+        int statusCode,
+        long latencyMs,
+        bool isStreaming,
+        string? requestBody,
+        string? responseBody,
+        CompressionResult compression)
+    {
+        // Trace logging
+        _ = LogTrace(traceLogger, path, model, metadata, outputTokens,
+            statusCode, latencyMs, isStreaming, requestBody, responseBody, compression);
+
+        // Session replay span
+        if (!string.IsNullOrEmpty(metadata.SessionId) && !isPrivate)
         {
-            ctx.Response.StatusCode = 500;
-            await ctx.Response.WriteAsJsonAsync(new { error = "Internal Proxy Error", detail = ex.Message, stack = ex.StackTrace });
+            _ = spanRecorder.RecordLlmCallAsync(
+                sessionId:     metadata.SessionId,
+                inputPayload:  requestBody ?? string.Empty,
+                outputPayload: responseBody ?? string.Empty,
+                durationMs:    (int)latencyMs,
+                tokens:        compression.CompressedTokens + outputTokens,
+                model:         model,
+                wasCompressed: compression.WasCompressed,
+                savedTokens:   compression.SavedTokens);
+        }
+
+        // Token-based usage billing
+        var totalTokens = compression.CompressedTokens + outputTokens;
+        if (!string.IsNullOrEmpty(userId) && totalTokens > 0)
+        {
+            _ = Task.Run(async () =>
+            {
+                try { await subscriptionService.IncrementUsageAsync(userId, totalTokens); }
+                catch { /* background task — swallow to prevent unobserved exceptions */ }
+            });
         }
     }
+
+    // ─── Trace Logging ─────────────────────────────────────────────
 
     private const int MaxBodyLength = 10_000;
 
@@ -233,12 +215,23 @@ public static class ProxyHandler
             ? value[..MaxBodyLength]
             : value;
 
-    private static Task LogTrace(ITraceLogger traceLogger,string? path,string model,RequestMetadata metadata,int outputTokens,int statusCode,long latencyMs,bool isStreaming,string? requestBody,string? responseBody, CompressionResult compression)
+    private static Task LogTrace(
+        ITraceLogger traceLogger,
+        string? path,
+        string model,
+        RequestMetadata metadata,
+        int outputTokens,
+        int statusCode,
+        long latencyMs,
+        bool isStreaming,
+        string? requestBody,
+        string? responseBody,
+        CompressionResult compression)
     {
         var (inputCost, outputCost, totalCost) =
             CostCalculator.Calculate(model, compression.CompressedTokens, outputTokens);
-            
-        var (origInputCost, _, origTotalCost) =
+
+        var (_, _, origTotalCost) =
             CostCalculator.Calculate(model, compression.OriginalTokens, outputTokens);
 
         var trace = new TraceRecord
@@ -278,9 +271,10 @@ public static class ProxyHandler
         }
 
         trace.SetProperties(metadata.Properties);
-
         return traceLogger.LogAsync(trace);
     }
+
+    // ─── Response Parsing Helpers ──────────────────────────────────
 
     private static (int InputTokens, int OutputTokens) ExtractTokens(string responseBody)
     {

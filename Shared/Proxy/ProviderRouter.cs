@@ -1,5 +1,5 @@
-namespace TokenBee.Shared.Proxy
-{
+namespace TokenBee.Shared.Proxy;
+
 
     public record ProviderConfig(string BaseUrl,string AuthHeader, string AuthValue, Dictionary<string, string>? ExtraHeaders = null);
 
@@ -145,5 +145,4 @@ namespace TokenBee.Shared.Proxy
                 AuthValue: $"Bearer {llmKey}"
             );
         }
-}
 }
