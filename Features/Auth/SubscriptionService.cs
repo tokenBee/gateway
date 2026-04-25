@@ -10,8 +10,8 @@ namespace TokenBee.Features.Auth;
 public record SubscriptionStatus(
     string UserId,
     string Status,
-    int RequestsThisMonth,
-    int FreeRequestsUsed,
+    long TokensThisMonth,
+    long FreeTokensUsed,
     bool IsOverFreeLimit,
     string? StripeCustomerId,
     string? StripeSubscriptionId);
@@ -21,7 +21,7 @@ public record SubscriptionStatus(
 public interface ISubscriptionService
 {
     Task<SubscriptionStatus> GetOrCreateAsync(string userId);
-    Task IncrementUsageAsync(string userId);
+    Task IncrementUsageAsync(string userId, int tokenCount);
     Task<string> CreateCheckoutSessionAsync(string userId, string email, string returnUrl);
     Task<string> CreatePortalSessionAsync(string userId, string returnUrl);
     Task HandleWebhookAsync(string json, string signature);
@@ -34,15 +34,16 @@ public class SubscriptionService(IConfiguration config, ILogger<SubscriptionServ
     private readonly string _conn = config.GetConnectionString("Default")!;
     private readonly string _webhookSecret = config["Stripe:WebhookSecret"] ?? "";
     private readonly string _priceId = config["Stripe:PriceId"] ?? "";
-    private const int FreeLimit = 10_000;
+    private const long FreeTokenLimit = 1_000_000;
 
     public async Task<SubscriptionStatus> GetOrCreateAsync(string userId)
     {
         try
         {
             const string selectSql = """
-                SELECT user_id AS UserId, status, requests_this_month AS RequestsThisMonth,
-                       free_requests_used AS FreeRequestsUsed,
+                SELECT user_id AS UserId, status,
+                       COALESCE(tokens_this_month, 0) AS TokensThisMonth,
+                       COALESCE(free_tokens_used, 0) AS FreeTokensUsed,
                        stripe_customer_id AS StripeCustomerId,
                        stripe_subscription_id AS StripeSubscriptionId
                 FROM subscriptions
@@ -65,13 +66,13 @@ public class SubscriptionService(IConfiguration config, ILogger<SubscriptionServ
                 return new SubscriptionStatus(userId, "free", 0, 0, false, null, null);
             }
 
-            var isOverFreeLimit = row.FreeRequestsUsed >= FreeLimit && row.Status == "free";
+            var isOverFreeLimit = row.FreeTokensUsed >= FreeTokenLimit && row.Status == "free";
 
             return new SubscriptionStatus(
                 row.UserId,
                 row.Status,
-                row.RequestsThisMonth,
-                row.FreeRequestsUsed,
+                row.TokensThisMonth,
+                row.FreeTokensUsed,
                 isOverFreeLimit,
                 row.StripeCustomerId,
                 row.StripeSubscriptionId);
@@ -83,29 +84,29 @@ public class SubscriptionService(IConfiguration config, ILogger<SubscriptionServ
         }
     }
 
-    public async Task IncrementUsageAsync(string userId)
+    public async Task IncrementUsageAsync(string userId, int tokenCount)
     {
         try
         {
             const string upsertSql = """
-                INSERT INTO subscriptions (id, user_id, status, requests_this_month, free_requests_used)
-                VALUES (@Id, @UserId, 'free', 1, 1)
+                INSERT INTO subscriptions (id, user_id, status, tokens_this_month, free_tokens_used)
+                VALUES (@Id, @UserId, 'free', @TokenCount, @TokenCount)
                 ON CONFLICT (user_id) DO UPDATE SET
-                    requests_this_month = subscriptions.requests_this_month + 1,
-                    free_requests_used = CASE
+                    tokens_this_month = COALESCE(subscriptions.tokens_this_month, 0) + @TokenCount,
+                    free_tokens_used = CASE
                         WHEN subscriptions.status = 'free'
-                        THEN subscriptions.free_requests_used + 1
-                        ELSE subscriptions.free_requests_used
+                        THEN COALESCE(subscriptions.free_tokens_used, 0) + @TokenCount
+                        ELSE COALESCE(subscriptions.free_tokens_used, 0)
                     END,
                     updated_at = NOW()
-                RETURNING status, free_requests_used AS FreeRequestsUsed
+                RETURNING status, COALESCE(free_tokens_used, 0) AS FreeTokensUsed
                 """;
 
             await using var connection = new NpgsqlConnection(_conn);
-            var result = await connection.QueryFirstAsync<UsageResult>(upsertSql, new { Id = Guid.NewGuid(), UserId = userId });
+            var result = await connection.QueryFirstAsync<UsageResult>(upsertSql, new { Id = Guid.NewGuid(), UserId = userId, TokenCount = tokenCount });
 
             // If user is past the free tier, insert a usage event for Stripe reporting
-            if (result.Status != "free" || result.FreeRequestsUsed > FreeLimit)
+            if (result.Status != "free" || result.FreeTokensUsed > FreeTokenLimit)
             {
                 const string eventSql = """
                     INSERT INTO usage_events (id, user_id, timestamp, request_count, reported_to_stripe)
@@ -364,12 +365,12 @@ public class SubscriptionService(IConfiguration config, ILogger<SubscriptionServ
     private record SubscriptionRow(
         string UserId,
         string Status,
-        int RequestsThisMonth,
-        int FreeRequestsUsed,
+        long TokensThisMonth,
+        long FreeTokensUsed,
         string? StripeCustomerId,
         string? StripeSubscriptionId);
 
-    private record UsageResult(string Status, int FreeRequestsUsed);
+    private record UsageResult(string Status, long FreeTokensUsed);
 
     private record UsageEvent(Guid Id, string UserId, int RequestCount);
 }

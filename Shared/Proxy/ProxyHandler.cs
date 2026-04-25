@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using TokenBee.Features.Auth;
 using TokenBee.Features.Observability;
 using TokenBee.Features.Compression;
 using TokenBee.Features.Replay;
@@ -8,7 +9,7 @@ namespace TokenBee.Shared.Proxy;
 
 public static class ProxyHandler
 {
-    public static async Task Handle(HttpContext ctx,IHttpClientFactory factory,ITraceLogger traceLogger,ICompressionClient compressionClient,ISpanRecorder spanRecorder)
+    public static async Task Handle(HttpContext ctx,IHttpClientFactory factory,ITraceLogger traceLogger,ICompressionClient compressionClient,ISpanRecorder spanRecorder,ISubscriptionService subscriptionService)
     {
         try 
         {
@@ -166,6 +167,17 @@ public static class ProxyHandler
                         wasCompressed: compression.WasCompressed,
                         savedTokens:   compression.SavedTokens);
                 }
+
+                // Increment token usage (fire-and-forget)
+                var totalTokens = compression.CompressedTokens + outputTokens;
+                if (!string.IsNullOrEmpty(userId) && totalTokens > 0)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try { await subscriptionService.IncrementUsageAsync(userId, totalTokens); }
+                        catch { /* swallow */ }
+                    });
+                }
             }
             else
             {
@@ -193,6 +205,17 @@ public static class ProxyHandler
                         model:         model,
                         wasCompressed: compression.WasCompressed,
                         savedTokens:   compression.SavedTokens);
+                }
+
+                // Increment token usage (fire-and-forget)
+                var totalTokens = compression.CompressedTokens + outputTokens;
+                if (!string.IsNullOrEmpty(userId) && totalTokens > 0)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try { await subscriptionService.IncrementUsageAsync(userId, totalTokens); }
+                        catch { /* swallow */ }
+                    });
                 }
             }
         }

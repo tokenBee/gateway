@@ -4,7 +4,7 @@ using TokenBee.Features.Auth;
 
 namespace TokenBee.Shared.Auth;
 
-public class ApiKeyMiddleware(RequestDelegate next, ILogger<ApiKeyMiddleware> logger)
+public class ApiKeyMiddleware(RequestDelegate next)
 {
     // Paths that skip API key authentication
     private static readonly string[] SkipPaths =
@@ -91,7 +91,7 @@ public class ApiKeyMiddleware(RequestDelegate next, ILogger<ApiKeyMiddleware> lo
             ctx.Response.StatusCode = 429;
             await ctx.Response.WriteAsJsonAsync(new
             {
-                error = "Free tier limit reached (10,000 requests)",
+                error = "Free tier limit reached (1,000,000 tokens). Upgrade for more.",
                 upgrade = "https://tokenbee.io/settings"
             });
             return;
@@ -104,21 +104,7 @@ public class ApiKeyMiddleware(RequestDelegate next, ILogger<ApiKeyMiddleware> lo
 
         await next(ctx);
 
-        // After the request completes, increment usage for /v1/* routes
-        if (path.StartsWith("/v1", StringComparison.OrdinalIgnoreCase))
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await subscriptionService.IncrementUsageAsync(validatedKey.UserId);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Background usage increment failed for {UserId}", validatedKey.UserId);
-                }
-            });
-        }
+        // Usage increment is handled by ProxyHandler after token counts are known
     }
 
     private static bool ShouldSkip(string path)
