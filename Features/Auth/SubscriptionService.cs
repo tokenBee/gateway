@@ -274,7 +274,7 @@ public class SubscriptionService(IConfiguration config, ILogger<SubscriptionServ
                     {
                         await using var connection = new NpgsqlConnection(_conn);
                         await connection.ExecuteAsync(
-                            "UPDATE subscriptions SET requests_this_month = 0, updated_at = NOW() WHERE stripe_customer_id = @CustomerId",
+                            "UPDATE subscriptions SET tokens_this_month = 0, updated_at = NOW() WHERE stripe_customer_id = @CustomerId",
                             new { CustomerId = invoice.CustomerId });
 
                         _ = ReportUsageToStripeAsync();
