@@ -28,7 +28,7 @@ public class TraceLogger : BackgroundService, ITraceLogger
             @InputTokens, @OutputTokens, @OriginalTokens, @CompressedTokens,
             @InputCostUsd, @OutputCostUsd, @TotalCostUsd, @SavedCostUsd,
             @LatencyMs, @StatusCode, @WasCompressed, @IsStreaming,
-            @UserId, @SessionId, @PropertiesJson,
+            @UserId, @SessionId, CAST(@PropertiesJson AS jsonb),
             @RequestBody, @ResponseBody, @CompressionMetadataJson
         );
         """;

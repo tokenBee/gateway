@@ -8,7 +8,7 @@ public static class ObservabilityExtensions
     {
         services.AddSingleton<TraceLogger>();
         services.AddSingleton<ITraceLogger>(sp => sp.GetRequiredService<TraceLogger>());
-        services.AddHostedService(sp => sp.GetRequiredService<TraceLogger>());
+        services.AddHostedService<TraceLogger>(sp => sp.GetRequiredService<TraceLogger>());
         
         services.AddScoped<MetricsQueries>();
         services.AddHostedService<TraceCleanupService>();
