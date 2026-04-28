@@ -198,6 +198,7 @@ public class MetricsQueries
                 COALESCE(SUM(total_cost_usd), 0)                     AS TotalCostUsd,
                 COALESCE(SUM(saved_cost_usd), 0)                     AS SavedCostUsd,
                 COALESCE(AVG(latency_ms), 0)                         AS AvgLatencyMs,
+                COALESCE(SUM(input_tokens + output_tokens), 0)       AS TotalTokens,
                 COALESCE(SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END), 0)::int AS ErrorCount,
                 MAX(timestamp)                                       AS LastSeenAt
             FROM traces
