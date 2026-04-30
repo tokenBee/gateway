@@ -1,9 +1,12 @@
 Metadata-Version: 2.4
 Name: tokenbee-sdk
-Version: 1.2.1
+Version: 1.2.2
 Summary: Official Python SDK for TokenBee LLM inference gateway and observability.
 Author: TokenBee Inc.
 Author-email: "TokenBee Inc." <founders@tokenbee.io>
+Project-URL: Homepage, https://tokenbee.io
+Project-URL: Dashboard, https://tokenbee.io/dashboard
+Project-URL: Repository, https://github.com/tokenBee/gateway
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
@@ -15,7 +18,7 @@ Dynamic: requires-python
 
 # TokenBee Python SDK
 
-Official Python SDK for [TokenBee](https://tokenbee.dev) - The Intelligent LLM Inference Gateway with Observability, Compression, and Privacy.
+Official Python SDK for [TokenBee](https://tokenbee.io) - The Intelligent LLM Inference Gateway with Observability, Compression, and Privacy.
 
 ## Features
 
@@ -23,6 +26,11 @@ Official Python SDK for [TokenBee](https://tokenbee.dev) - The Intelligent LLM I
 - **Intelligent Compression**: Reduce token usage and latency with context-aware compression.
 - **Privacy Guard**: Automatic PII masking and privacy-preserving inference.
 - **Built-in Observability**: Automatic tracking of latency, costs, and token usage.
+
+## Links
+
+- **Homepage**: [https://tokenbee.io](https://tokenbee.io)
+- **Dashboard**: [https://tokenbee.io/dashboard](https://tokenbee.io/dashboard)
 
 ## Installation
 

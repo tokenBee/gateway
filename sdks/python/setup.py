@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name="tokenbee-sdk",
-    version="1.2.1",
+    version="1.2.2",
     packages=find_packages(),
     install_requires=["httpx>=0.23.0"],
     author="TokenBee Inc.",
