@@ -20,4 +20,9 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    project_urls={
+        "Homepage": "https://tokenbee.io",
+        "Dashboard": "https://tokenbee.io/dashboard",
+        "Source": "https://github.com/tokenBee/gateway",
+    },
 )

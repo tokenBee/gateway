@@ -15,6 +15,11 @@
     "prepublishOnly": "npm run build"
   },
   "author": "TokenBee Inc. <founders@tokenbee.io>",
+  "homepage": "https://tokenbee.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tokenBee/gateway"
+  },
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^25.6.0",

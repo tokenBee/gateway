@@ -1,6 +1,6 @@
 # TokenBee Python SDK
 
-Official Python SDK for [TokenBee](https://tokenbee.dev) - The Intelligent LLM Inference Gateway with Observability, Compression, and Privacy.
+Official Python SDK for [TokenBee](https://tokenbee.io) - The Intelligent LLM Inference Gateway with Observability, Compression, and Privacy.
 
 ## Features
 
@@ -8,6 +8,11 @@ Official Python SDK for [TokenBee](https://tokenbee.dev) - The Intelligent LLM I
 - **Intelligent Compression**: Reduce token usage and latency with context-aware compression.
 - **Privacy Guard**: Automatic PII masking and privacy-preserving inference.
 - **Built-in Observability**: Automatic tracking of latency, costs, and token usage.
+
+## Links
+
+- **Homepage**: [https://tokenbee.io](https://tokenbee.io)
+- **Dashboard**: [https://tokenbee.io/dashboard](https://tokenbee.io/dashboard)
 
 ## Installation
 
