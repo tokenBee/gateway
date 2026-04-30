@@ -88,6 +88,9 @@ export class TokenBee {
       "X-TokenBee-Provider": provider
     };
 
+    if (params.input.sessionId) headers["X-TB-Session-Id"] = params.input.sessionId;
+    if (params.input.userId) headers["X-TB-User-Id"] = params.input.userId;
+
     const privacy = params.input.privacy !== undefined ? params.input.privacy : this.options.privacy;
     if (privacy !== undefined) {
       headers["X-TokenBee-Privacy"] = String(privacy);
@@ -98,6 +101,8 @@ export class TokenBee {
     delete payload.compression;
     delete payload.rate;
     delete payload.privacy;
+    delete payload.sessionId;
+    delete payload.userId;
 
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: "POST",

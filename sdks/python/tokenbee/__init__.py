@@ -98,12 +98,18 @@ class TokenBee:
             headers["X-TokenBee-Rate"] = str(input["rate"])
         if "privacy" in input:
             headers["X-TokenBee-Privacy"] = str(input["privacy"]).lower()
+        if "sessionId" in input:
+            headers["X-TB-Session-Id"] = str(input["sessionId"])
+        if "userId" in input:
+            headers["X-TB-User-Id"] = str(input["userId"])
 
         payload = input.copy()
         payload["model"] = model_name
         payload.pop("compression", None)
         payload.pop("rate", None)
         payload.pop("privacy", None)
+        payload.pop("sessionId", None)
+        payload.pop("userId", None)
 
         response = self.client.post("/chat/completions", json=payload, headers=headers)
         response.raise_for_status()
