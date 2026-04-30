@@ -61,9 +61,16 @@ public static class ProxyHandler
 
             if (rate >= 1.0f) skipCompression = true;
 
-            // Enforce tier limits: free users are clamped to standard compression
-            if (sub?.Status == "free" && rate < 0.5f)
-                rate = 0.5f;
+            // Enforce tier limits:
+            // 1. Free users are clamped to standard compression (0.50)
+            // 2. Users OVER the free limit have compression DISABLED (Graceful degradation to observability-only)
+            if (sub?.Status == "free")
+            {
+                if (sub.IsOverFreeLimit)
+                    skipCompression = true;
+                else if (rate < 0.5f)
+                    rate = 0.5f;
+            }
 
             // 5. Compress prompt (or skip if below threshold / disabled)
             CompressionResult compression;
@@ -141,7 +148,7 @@ public static class ProxyHandler
 
             // 9. Record trace, replay span, and token usage (fire-and-forget)
             RecordObservability(
-                traceLogger, spanRecorder, subscriptionService,
+                traceLogger, spanRecorder, subscriptionService, sub,
                 path, model, metadata, userId, isPrivate,
                 outputTokens, (int)llmResponse.StatusCode,
                 stopwatch.ElapsedMilliseconds, isStreaming,
@@ -163,6 +170,7 @@ public static class ProxyHandler
         ITraceLogger traceLogger,
         ISpanRecorder spanRecorder,
         ISubscriptionService subscriptionService,
+        SubscriptionStatus? sub,
         string? path,
         string model,
         RequestMetadata metadata,
@@ -180,8 +188,10 @@ public static class ProxyHandler
         _ = LogTrace(traceLogger, path, model, metadata, outputTokens,
             statusCode, latencyMs, isStreaming, requestBody, responseBody, compression);
 
-        // Session replay span
-        if (!string.IsNullOrEmpty(metadata.SessionId) && !isPrivate)
+        // Session replay span (Premium feature: disabled if free limit exceeded)
+        bool skipPremiumFeatures = sub?.Status == "free" && sub.IsOverFreeLimit;
+
+        if (!string.IsNullOrEmpty(metadata.SessionId) && !isPrivate && !skipPremiumFeatures)
         {
             _ = spanRecorder.RecordLlmCallAsync(
                 sessionId:     metadata.SessionId,

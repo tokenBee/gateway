@@ -85,17 +85,10 @@ public class ApiKeyMiddleware(RequestDelegate next)
             return;
         }
 
-        // 2. Usage Quota (Business limit)
-        if (subscription.IsOverFreeLimit)
-        {
-            ctx.Response.StatusCode = 429;
-            await ctx.Response.WriteAsJsonAsync(new
-            {
-                error = "Free tier limit reached (1,000,000 tokens). Upgrade for more.",
-                upgrade = "https://tokenbee.io/settings"
-            });
-            return;
-        }
+        // 2. Usage Quota (Soft Limit)
+        // We no longer block requests here. Instead, we pass the subscription status 
+        // to the ProxyHandler which will disable premium features (compression/replays) 
+        // if the limit is exceeded, while keeping observability active.
 
         // Set context items for downstream handlers
         ctx.Items["UserId"] = validatedKey.UserId;
