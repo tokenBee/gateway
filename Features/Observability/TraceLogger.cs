@@ -22,14 +22,14 @@ public class TraceLogger : BackgroundService, ITraceLogger
             input_cost_usd, output_cost_usd, total_cost_usd, saved_cost_usd,
             latency_ms, status_code, was_compressed, is_streaming,
             user_id, session_id, properties_json,
-            request_body, response_body, compression_metadata_json
+            request_body, original_request_body, response_body, compression_metadata_json
         ) VALUES (
             @Id, @Timestamp, @Path, @Model, @Provider,
             @InputTokens, @OutputTokens, @OriginalTokens, @CompressedTokens,
             @InputCostUsd, @OutputCostUsd, @TotalCostUsd, @SavedCostUsd,
             @LatencyMs, @StatusCode, @WasCompressed, @IsStreaming,
             @UserId, @SessionId, CAST(@PropertiesJson AS jsonb),
-            @RequestBody, @ResponseBody, @CompressionMetadataJson
+            @RequestBody, @OriginalRequestBody, @ResponseBody, @CompressionMetadataJson
         );
         """;
 

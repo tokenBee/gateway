@@ -81,6 +81,7 @@ public sealed record TraceDto
     public string? SessionId { get; init; }
     public string? PropertiesJson { get; init; }
     public string? RequestBody { get; init; }
+    public string? OriginalRequestBody { get; init; }
     public string? ResponseBody { get; init; }
 }
 
@@ -271,6 +272,7 @@ public class MetricsQueries
                 session_id     AS SessionId,
                 properties_json AS PropertiesJson,
                 request_body   AS RequestBody,
+                original_request_body AS OriginalRequestBody,
                 response_body  AS ResponseBody
             FROM traces
             {where}
@@ -308,6 +310,7 @@ public class MetricsQueries
                 session_id     AS SessionId,
                 properties_json AS PropertiesJson,
                 request_body   AS RequestBody,
+                original_request_body AS OriginalRequestBody,
                 response_body  AS ResponseBody
             FROM traces
             WHERE id = @Id

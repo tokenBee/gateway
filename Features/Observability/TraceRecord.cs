@@ -25,6 +25,7 @@ public class TraceRecord
     public string? SessionId { get; set; }
     public string? PropertiesJson { get; set; }
     public string? RequestBody { get; set; }
+    public string? OriginalRequestBody { get; set; }
     public string? ResponseBody { get; set; }
     public string? CompressionMetadataJson { get; set; }
 

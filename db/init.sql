@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS traces (
     session_id VARCHAR(100),
     properties_json JSONB,
     request_body TEXT,
+    original_request_body TEXT,
     response_body TEXT,
     compression_metadata_json TEXT
 );

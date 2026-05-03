@@ -84,6 +84,7 @@ public static class ProxyHandler
                 compression = await compressionClient.CompressAsync(body, rate, ctx.RequestAborted);
             }
 
+            var originalBody = body;
             body = compression.CompressedBody;
 
             // 6. Route to the correct LLM provider
@@ -152,7 +153,7 @@ public static class ProxyHandler
                 path, model, metadata, userId, isPrivate,
                 outputTokens, (int)llmResponse.StatusCode,
                 stopwatch.ElapsedMilliseconds, isStreaming,
-                body, responseBody, compression);
+                body, responseBody, originalBody, compression);
         }
         catch (Exception)
         {
@@ -182,11 +183,12 @@ public static class ProxyHandler
         bool isStreaming,
         string? requestBody,
         string? responseBody,
+        string? originalRequestBody,
         CompressionResult compression)
     {
         // Trace logging
         _ = LogTrace(traceLogger, path, model, metadata, outputTokens,
-            statusCode, latencyMs, isStreaming, requestBody, responseBody, compression);
+            statusCode, latencyMs, isStreaming, requestBody, responseBody, originalRequestBody, compression);
 
         // Session replay span (Premium feature: disabled if free limit exceeded)
         bool skipPremiumFeatures = sub?.Status == "free" && sub.IsOverFreeLimit;
@@ -236,6 +238,7 @@ public static class ProxyHandler
         bool isStreaming,
         string? requestBody,
         string? responseBody,
+        string? originalRequestBody,
         CompressionResult compression)
     {
         var (inputCost, outputCost, totalCost) =
@@ -266,6 +269,7 @@ public static class ProxyHandler
             UserId = metadata.UserId,
             SessionId = metadata.SessionId,
             RequestBody = Truncate(requestBody),
+            OriginalRequestBody = Truncate(originalRequestBody),
             ResponseBody = Truncate(responseBody)
         };
 
