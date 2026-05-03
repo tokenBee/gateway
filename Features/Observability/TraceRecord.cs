@@ -22,6 +22,7 @@ public class TraceRecord
     public bool WasCompressed { get; set; }
     public bool IsStreaming { get; set; }
     public string? UserId { get; set; }
+    public string? AccountId { get; set; }
     public string? SessionId { get; set; }
     public string? PropertiesJson { get; set; }
     public string? RequestBody { get; set; }

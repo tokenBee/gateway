@@ -78,6 +78,7 @@ public sealed record TraceDto
     public bool WasCompressed { get; init; }
     public bool IsStreaming { get; init; }
     public string? UserId { get; init; }
+    public string? AccountId { get; init; }
     public string? SessionId { get; init; }
     public string? PropertiesJson { get; init; }
     public string? RequestBody { get; init; }
@@ -101,9 +102,9 @@ public class MetricsQueries
 
     // ──── 1. Summary ────
 
-    public async Task<SummaryDto> GetSummaryAsync(int days, string? userId, string? property, string? propertyValue)
+    public async Task<SummaryDto> GetSummaryAsync(int days, string? accountId, string? property, string? propertyValue)
     {
-        var filters = BuildFilters(days, userId, property, propertyValue);
+        var filters = BuildFilters(days, accountId, property, propertyValue);
 
         var sql = $"""
             SELECT
@@ -137,9 +138,9 @@ public class MetricsQueries
 
     // ──── 2. Daily ────
 
-    public async Task<IEnumerable<DailyDto>> GetDailyAsync(int days, string? userId)
+    public async Task<IEnumerable<DailyDto>> GetDailyAsync(int days, string? accountId)
     {
-        var filters = BuildFilters(days, userId, null, null);
+        var filters = BuildFilters(days, accountId, null, null);
 
         var sql = $"""
             SELECT
@@ -163,9 +164,9 @@ public class MetricsQueries
 
     // ──── 3. By Model ────
 
-    public async Task<IEnumerable<ModelDto>> GetByModelAsync(int days, string? userId)
+    public async Task<IEnumerable<ModelDto>> GetByModelAsync(int days, string? accountId)
     {
-        var filters = BuildFilters(days, userId, null, null);
+        var filters = BuildFilters(days, accountId, null, null);
 
         var sql = $"""
             SELECT
@@ -190,7 +191,7 @@ public class MetricsQueries
 
     // ──── 4. By User ────
 
-    public async Task<IEnumerable<UserDto>> GetByUserAsync(int days, int limit)
+    public async Task<IEnumerable<UserDto>> GetByUserAsync(int days, int limit, string? accountId)
     {
         var sql = """
             SELECT
@@ -204,25 +205,26 @@ public class MetricsQueries
                 MAX(timestamp)                                       AS LastSeenAt
             FROM traces
             WHERE timestamp >= NOW() - MAKE_INTERVAL(days => @Days)
-              AND user_id IS NOT NULL
+              AND account_id = @AccountId
             GROUP BY user_id
             ORDER BY SUM(total_cost_usd) DESC
             LIMIT @Limit
             """;
 
         await using var connection = new NpgsqlConnection(_connectionString);
-        return await connection.QueryAsync<UserDto>(sql, new { Days = days, Limit = limit });
+        return await connection.QueryAsync<UserDto>(sql, new { Days = days, Limit = limit, AccountId = accountId });
     }
 
     // ──── 5. Traces (list) ────
 
     public async Task<IEnumerable<TraceDto>> GetTracesAsync(
-        int limit, int offset, string? userId, string? model,
+        int limit, int offset, string? accountId, string? userId, string? model,
         string? property, string? propertyValue,
         bool onlyErrors, bool onlyCompressed)
     {
         var dp = new DynamicParameters();
-        var clauses = new List<string>();
+        var clauses = new List<string> { "account_id = @AccountId" };
+        dp.Add("AccountId", accountId);
 
         if (!string.IsNullOrEmpty(userId))
         {
@@ -323,17 +325,16 @@ public class MetricsQueries
     // ──────────────────── Private helpers ────────────────────
 
     private static (string WhereClause, DynamicParameters Parameters) BuildFilters(
-        int days, string? userId, string? property, string? propertyValue)
+        int days, string? accountId, string? property, string? propertyValue)
     {
         var dp = new DynamicParameters();
-        var clauses = new List<string> { "timestamp >= NOW() - MAKE_INTERVAL(days => @Days)" };
+        var clauses = new List<string> 
+        { 
+            "timestamp >= NOW() - MAKE_INTERVAL(days => @Days)",
+            "account_id = @AccountId"
+        };
         dp.Add("Days", days);
-
-        if (!string.IsNullOrEmpty(userId))
-        {
-            clauses.Add("user_id = @UserId");
-            dp.Add("UserId", userId);
-        }
+        dp.Add("AccountId", accountId);
 
         if (!string.IsNullOrEmpty(property) && !string.IsNullOrEmpty(propertyValue))
         {

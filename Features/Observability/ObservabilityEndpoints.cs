@@ -22,6 +22,7 @@ public static class ObservabilityEndpoints
     private static async Task<IResult> GetSummary(
         MetricsQueries queries,
         int? days,
+        string? accountId,
         string? userId,
         string? property,
         string? propertyValue,
@@ -30,7 +31,7 @@ public static class ObservabilityEndpoints
         try
         {
             var result = await queries.GetSummaryAsync(
-                days ?? 30, userId, property, propertyValue);
+                days ?? 30, accountId, property, propertyValue);
             return Results.Ok(result);
         }
         catch (Exception ex)
@@ -45,12 +46,12 @@ public static class ObservabilityEndpoints
     private static async Task<IResult> GetDaily(
         MetricsQueries queries,
         int? days,
-        string? userId,
+        string? accountId,
         ILogger<MetricsQueries> logger)
     {
         try
         {
-            var result = await queries.GetDailyAsync(days ?? 30, userId);
+            var result = await queries.GetDailyAsync(days ?? 30, accountId);
             return Results.Ok(result);
         }
         catch (Exception ex)
@@ -65,12 +66,12 @@ public static class ObservabilityEndpoints
     private static async Task<IResult> GetByModel(
         MetricsQueries queries,
         int? days,
-        string? userId,
+        string? accountId,
         ILogger<MetricsQueries> logger)
     {
         try
         {
-            var result = await queries.GetByModelAsync(days ?? 30, userId);
+            var result = await queries.GetByModelAsync(days ?? 30, accountId);
             return Results.Ok(result);
         }
         catch (Exception ex)
@@ -86,11 +87,12 @@ public static class ObservabilityEndpoints
         MetricsQueries queries,
         int? days,
         int? limit,
+        string? accountId,
         ILogger<MetricsQueries> logger)
     {
         try
         {
-            var result = await queries.GetByUserAsync(days ?? 30, limit ?? 20);
+            var result = await queries.GetByUserAsync(days ?? 30, limit ?? 20, accountId);
             return Results.Ok(result);
         }
         catch (Exception ex)
@@ -106,6 +108,7 @@ public static class ObservabilityEndpoints
         MetricsQueries queries,
         int? limit,
         int? offset,
+        string? accountId,
         string? userId,
         string? model,
         string? property,
@@ -119,7 +122,7 @@ public static class ObservabilityEndpoints
             var effectiveLimit = Math.Min(limit ?? 50, 100);
             var result = await queries.GetTracesAsync(
                 effectiveLimit, offset ?? 0,
-                userId, model,
+                accountId, userId, model,
                 property, propertyValue,
                 onlyErrors ?? false, onlyCompressed ?? false);
             return Results.Ok(result);

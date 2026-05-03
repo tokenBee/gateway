@@ -32,9 +32,8 @@ public static class ProxyHandler
 
             // 2. Extract request metadata and user context
             var metadata = MetadataExtractor.Extract(ctx.Request.Headers);
-            var userId = ctx.Items["UserId"]?.ToString()
-                ?? ctx.Request.Headers["X-TB-User-Id"].FirstOrDefault();
-            metadata = metadata with { UserId = userId };
+            var accountId = ctx.Items["UserId"]?.ToString();
+            metadata = metadata with { AccountId = accountId };
 
             var sub = ctx.Items["Subscription"] as SubscriptionStatus;
 
@@ -267,6 +266,7 @@ public static class ProxyHandler
             WasCompressed = compression.WasCompressed,
             IsStreaming = isStreaming,
             UserId = metadata.UserId,
+            AccountId = metadata.AccountId,
             SessionId = metadata.SessionId,
             RequestBody = Truncate(requestBody),
             OriginalRequestBody = Truncate(originalRequestBody),

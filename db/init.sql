@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS traces (
     was_compressed BOOLEAN NOT NULL,
     is_streaming BOOLEAN NOT NULL,
     user_id VARCHAR(100),
+    account_id VARCHAR(100),
     session_id VARCHAR(100),
     properties_json JSONB,
     request_body TEXT,
@@ -25,7 +26,9 @@ CREATE TABLE IF NOT EXISTS traces (
     compression_metadata_json TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_traces_timestamp ON traces (timestamp);
+CREATE INDEX IF NOT EXISTS idx_traces_timestamp ON traces(timestamp);
+CREATE INDEX IF NOT EXISTS idx_traces_account_id ON traces(account_id);
+CREATE INDEX IF NOT EXISTS idx_traces_user_id ON traces(user_id);
 CREATE INDEX IF NOT EXISTS idx_traces_model ON traces (model);
 
 -- Auth & Keys

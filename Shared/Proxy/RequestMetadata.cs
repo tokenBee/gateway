@@ -3,6 +3,7 @@ namespace TokenBee.Shared.Proxy;
 public record RequestMetadata
 (
     string? UserId,
+    string? AccountId,
     string? SessionId,
     Dictionary<string, string> Properties
 );
@@ -31,6 +32,6 @@ public static class MetadataExtractor
             }
         }
 
-        return new RequestMetadata(userId, sessionId, properties);
+        return new RequestMetadata(userId, null, sessionId, properties);
     }
 }
