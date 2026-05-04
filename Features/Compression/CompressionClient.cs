@@ -12,6 +12,12 @@ public class CompressionOptions
     public int TimeoutMs { get; set; } = 1000; // Increased for cross-cloud (Railway -> Hetzner)
 }
 
+public enum CompressionStrategy
+{
+    Hive, // General-purpose (agnostic)
+    Smart  // Query-specific
+}
+
 public record CompressionResult(
     string CompressedBody,
     int OriginalTokens,
@@ -21,12 +27,13 @@ public record CompressionResult(
     bool WasCompressed,
     string ModeUsed = "agnostic",
     string? QueryUsed = null,
-    bool AutoQuery = false
+    bool AutoQuery = false,
+    string ContextType = "auto"
 );
 
 public interface ICompressionClient
 {
-    Task<CompressionResult> CompressAsync(string requestBody, float rate = 0.5f, CancellationToken ct = default);
+    Task<CompressionResult> CompressAsync(string requestBody, float rate = 0.5f, CompressionStrategy strategy = CompressionStrategy.Smart, string contextType = "auto", CancellationToken ct = default);
 }
 
 public class CompressionClient : ICompressionClient
@@ -100,7 +107,7 @@ public class CompressionClient : ICompressionClient
         catch { return null; }
     }
 
-    public async Task<CompressionResult> CompressAsync(string requestBody, float rate = 0.5f, CancellationToken ct = default)
+    public async Task<CompressionResult> CompressAsync(string requestBody, float rate = 0.5f, CompressionStrategy strategy = CompressionStrategy.Smart, string contextType = "auto", CancellationToken ct = default)
     {
         int estimatedTokens = requestBody.Length / 4;
 
@@ -141,13 +148,17 @@ public class CompressionClient : ICompressionClient
                 client.DefaultRequestHeaders.Add("X-Sidecar-Token", _options.ApiKey);
             }
 
-            var query = ExtractLastUserMessage(requestBody);
+            var query = strategy == CompressionStrategy.Smart 
+                ? ExtractLastUserMessage(requestBody)
+                : null;
             
             var reqBody = new { 
                 prompt = requestBody, 
                 rate = rate,
                 query = query,
-                coarse = false
+                mode = strategy == CompressionStrategy.Hive ? "hive_v1" : "smart_v1",
+                coarse = strategy == CompressionStrategy.Hive,
+                context_type = contextType
             };
             
             var response = await client.PostAsJsonAsync("/compress", reqBody, cts.Token);
@@ -166,7 +177,8 @@ public class CompressionClient : ICompressionClient
                         true,
                         result.ModeUsed ?? "agnostic",
                         result.QueryUsed,
-                        result.AutoQuery ?? false);
+                        result.AutoQuery ?? false,
+                        result.ContextType ?? "auto");
                 }
             }
         }
@@ -193,6 +205,7 @@ public class CompressionClient : ICompressionClient
         [property: JsonPropertyName("compression_rate")] double CompressionRate,
         [property: JsonPropertyName("mode_used")] string? ModeUsed,
         [property: JsonPropertyName("query_used")] string? QueryUsed,
-        [property: JsonPropertyName("auto_query")] bool? AutoQuery
+        [property: JsonPropertyName("auto_query")] bool? AutoQuery,
+        [property: JsonPropertyName("context_type")] string? ContextType
     );
 }

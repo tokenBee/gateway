@@ -45,6 +45,8 @@ public static class ProxyHandler
             var rateStr = ctx.Request.Headers["X-TokenBee-Rate"].FirstOrDefault();
             var modelHeader = ctx.Request.Headers["X-TokenBee-Model"].FirstOrDefault();
             var providerHeader = ctx.Request.Headers["X-TokenBee-Provider"].FirstOrDefault();
+            var strategyStr = ctx.Request.Headers["X-TokenBee-Strategy"].FirstOrDefault()?.ToLowerInvariant();
+            var contextStr = ctx.Request.Headers["X-TokenBee-Context"].FirstOrDefault()?.ToLowerInvariant() ?? "auto";
             var privacyStr = ctx.Request.Headers["X-TokenBee-Privacy"].FirstOrDefault()?.ToLowerInvariant();
 
             bool isPrivate = privacyStr is "true" or "1";
@@ -59,6 +61,12 @@ public static class ProxyHandler
                 rate = parsed;
 
             if (rate >= 1.0f) skipCompression = true;
+            
+            var strategy = CompressionStrategy.Smart; // Default to Smart (query-aware)
+            if (strategyStr == "hive" || strategyStr == "hive_v1")
+                strategy = CompressionStrategy.Hive;
+            else if (strategyStr == "smart" || strategyStr == "smart_v1")
+                strategy = CompressionStrategy.Smart;
 
             // Enforce tier limits:
             // 1. Free users are clamped to standard compression (0.50)
@@ -80,7 +88,7 @@ public static class ProxyHandler
             }
             else
             {
-                compression = await compressionClient.CompressAsync(body, rate, ctx.RequestAborted);
+                compression = await compressionClient.CompressAsync(body, rate, strategy, contextStr, ctx.RequestAborted);
             }
 
             var originalBody = body;
@@ -149,7 +157,7 @@ public static class ProxyHandler
             // 9. Record trace, replay span, and token usage (fire-and-forget)
             RecordObservability(
                 traceLogger, spanRecorder, subscriptionService, sub,
-                path, model, metadata, userId, isPrivate,
+                path, model, metadata, accountId, isPrivate,
                 outputTokens, (int)llmResponse.StatusCode,
                 stopwatch.ElapsedMilliseconds, isStreaming,
                 body, responseBody, originalBody, compression);
@@ -279,7 +287,8 @@ public static class ProxyHandler
             {
                 compressionMode = compression.ModeUsed,
                 compressionQuery = compression.QueryUsed,
-                autoQuery = compression.AutoQuery
+                autoQuery = compression.AutoQuery,
+                contextType = compression.ContextType
             };
             trace.CompressionMetadataJson = JsonSerializer.Serialize(compMeta);
         }

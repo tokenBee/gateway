@@ -5,6 +5,19 @@ export enum CompressionRate {
   Extreme = "0.2"
 }
 
+export enum CompressionStrategy {
+  Hive = "hive_v1",
+  Smart = "smart_v1"
+}
+
+export enum TokenBeeContext {
+  Auto = "auto",
+  Conversation = "conversation",
+  Document = "document",
+  Agent = "agent",
+  Code = "code"
+}
+
 export enum TokenBeeModel {
   // OpenAI
   OpenAIGPT4_5 = "openai/gpt-4.5-preview",
@@ -54,6 +67,8 @@ export enum TokenBeeModel {
 export interface TokenBeeOptions {
   compression?: string;
   rate?: CompressionRate | string;
+  strategy?: CompressionStrategy | string;
+  context?: TokenBeeContext | string;
   model?: TokenBeeModel | string;
   provider?: string;
   privacy?: boolean;
@@ -84,6 +99,8 @@ export class TokenBee {
       "Content-Type": "application/json",
       "X-TokenBee-Compression": params.input.compression || this.options.compression || "auto",
       "X-TokenBee-Rate": params.input.rate || this.options.rate || CompressionRate.Medium,
+      "X-TokenBee-Strategy": params.input.strategy || this.options.strategy || CompressionStrategy.Smart,
+      "X-TokenBee-Context": params.input.context || this.options.context || TokenBeeContext.Auto,
       "X-TokenBee-Model": modelName,
       "X-TokenBee-Provider": provider
     };
@@ -100,6 +117,8 @@ export class TokenBee {
     // Remove SDK-specific keys from the payload sent to the LLM
     delete payload.compression;
     delete payload.rate;
+    delete payload.strategy;
+    delete payload.context;
     delete payload.privacy;
     delete payload.sessionId;
     delete payload.userId;

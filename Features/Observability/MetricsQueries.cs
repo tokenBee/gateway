@@ -84,6 +84,7 @@ public sealed record TraceDto
     public string? RequestBody { get; init; }
     public string? OriginalRequestBody { get; init; }
     public string? ResponseBody { get; init; }
+    public string? CompressionMetadataJson { get; init; }
 }
 
 // ──────────────────────────────── Queries ────────────────────────────────
@@ -275,7 +276,8 @@ public class MetricsQueries
                 properties_json AS PropertiesJson,
                 request_body   AS RequestBody,
                 original_request_body AS OriginalRequestBody,
-                response_body  AS ResponseBody
+                response_body  AS ResponseBody,
+                compression_metadata_json AS CompressionMetadataJson
             FROM traces
             {where}
             ORDER BY timestamp DESC
@@ -313,7 +315,8 @@ public class MetricsQueries
                 properties_json AS PropertiesJson,
                 request_body   AS RequestBody,
                 original_request_body AS OriginalRequestBody,
-                response_body  AS ResponseBody
+                response_body  AS ResponseBody,
+                compression_metadata_json AS CompressionMetadataJson
             FROM traces
             WHERE id = @Id
             """;

@@ -8,6 +8,17 @@ class CompressionRate(str, Enum):
     HIGH = "0.33"
     EXTREME = "0.2"
 
+class CompressionStrategy(str, Enum):
+    HIVE = "hive_v1"
+    SMART = "smart_v1"
+
+class TokenBeeContext(str, Enum):
+    AUTO = "auto"
+    CONVERSATION = "conversation"
+    DOCUMENT = "document"
+    AGENT = "agent"
+    CODE = "code"
+
 class TokenBeeModel(str, Enum):
     # OpenAI
     OPENAI_GPT_4_5 = "openai/gpt-4.5-preview"
@@ -60,6 +71,8 @@ class TokenBee:
         llm_key: str,
         compression: str = "auto", 
         rate: str = CompressionRate.MEDIUM, 
+        strategy: str = CompressionStrategy.SMART,
+        context: str = TokenBeeContext.AUTO,
         model: str = "", 
         provider: str = "",
         privacy: bool = False
@@ -74,6 +87,8 @@ class TokenBee:
             "X-LLM-Key": llm_key,
             "X-TokenBee-Compression": compression,
             "X-TokenBee-Rate": rate,
+            "X-TokenBee-Strategy": strategy,
+            "X-TokenBee-Context": context,
             "X-TokenBee-Privacy": str(privacy).lower()
         }
         if model:
@@ -96,6 +111,10 @@ class TokenBee:
             headers["X-TokenBee-Compression"] = str(input["compression"])
         if "rate" in input:
             headers["X-TokenBee-Rate"] = str(input["rate"])
+        if "strategy" in input:
+            headers["X-TokenBee-Strategy"] = str(input["strategy"])
+        if "context" in input:
+            headers["X-TokenBee-Context"] = str(input["context"])
         if "privacy" in input:
             headers["X-TokenBee-Privacy"] = str(input["privacy"]).lower()
         if "sessionId" in input:
@@ -107,6 +126,8 @@ class TokenBee:
         payload["model"] = model_name
         payload.pop("compression", None)
         payload.pop("rate", None)
+        payload.pop("strategy", None)
+        payload.pop("context", None)
         payload.pop("privacy", None)
         payload.pop("sessionId", None)
         payload.pop("userId", None)
