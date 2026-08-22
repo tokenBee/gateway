@@ -89,6 +89,14 @@ namespace TokenBee.Shared.Proxy;
                     AuthValue: $"Bearer {llmKey}"
                 );
             }
+            if (p == "xai" || p == "grok")
+            {
+                return new ProviderConfig(
+                    BaseUrl: "https://api.x.ai",
+                    AuthHeader: "Authorization",
+                    AuthValue: $"Bearer {llmKey}"
+                );
+            }
 
             // Fallback to auto-detection from model name
 
@@ -128,10 +136,29 @@ namespace TokenBee.Shared.Proxy;
                     AuthValue: $"Bearer {llmKey}"
                 );
 
-            // Groq
+            // xAI
+            if (m.StartsWith("grok-"))
+                return new ProviderConfig(
+                    BaseUrl: "https://api.x.ai",
+                    AuthHeader: "Authorization",
+                    AuthValue: $"Bearer {llmKey}"
+                );
+
+            // Groq — Llama, Gemma, GPT-OSS hosted on Groq, Qwen, Compound, etc.
+            // Note: model IDs like "openai/gpt-oss-120b" must be sent with provider=groq
+            // (SDK does this via "groq/openai/gpt-oss-120b").
             if (m.StartsWith("llama-") ||
                 m.StartsWith("mixtral-") ||
-                m.StartsWith("gemma-"))
+                m.StartsWith("gemma-") ||
+                m.StartsWith("meta-llama/") ||
+                m.StartsWith("qwen/") ||
+                m.StartsWith("qwen") ||
+                m.Contains("gpt-oss") ||
+                m.StartsWith("groq/compound") ||
+                m.Contains("compound") ||
+                m.StartsWith("moonshotai/") ||
+                m.StartsWith("deepseek-") ||
+                m.StartsWith("minimax"))
                 return new ProviderConfig(
                     BaseUrl: "https://api.groq.com/openai",
                     AuthHeader: "Authorization",

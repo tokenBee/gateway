@@ -19,28 +19,39 @@ export enum TokenBeeContext {
 }
 
 export enum TokenBeeModel {
-  // OpenAI
-  OpenAIGPT4_5 = "openai/gpt-4.5-preview",
+  // OpenAI — current GPT-5.6 / GPT-5 family
+  OpenAIGPT5_6Sol = "openai/gpt-5.6-sol",
+  OpenAIGPT5_6Terra = "openai/gpt-5.6-terra",
+  OpenAIGPT5_6Luna = "openai/gpt-5.6-luna",
+  OpenAIGPT5 = "openai/gpt-5",
+  OpenAIGPT5Mini = "openai/gpt-5-mini",
+  OpenAIGPT5Nano = "openai/gpt-5-nano",
+  OpenAIGPT5_4 = "openai/gpt-5.4",
+  OpenAIGPT5_4Mini = "openai/gpt-5.4-mini",
+  OpenAIGPT5_4Nano = "openai/gpt-5.4-nano",
+  OpenAIGPT4_1 = "openai/gpt-4.1",
+  OpenAIGPT4_1Mini = "openai/gpt-4.1-mini",
+  OpenAIGPT4_1Nano = "openai/gpt-4.1-nano",
   OpenAIGPT4o = "openai/gpt-4o",
   OpenAIGPT4oMini = "openai/gpt-4o-mini",
+  OpenAIO3 = "openai/o3",
+  OpenAIO3Mini = "openai/o3-mini",
+  OpenAIO4Mini = "openai/o4-mini",
   OpenAIO1 = "openai/o1",
   OpenAIO1Mini = "openai/o1-mini",
-  OpenAIO3Mini = "openai/o3-mini",
 
   // Anthropic
+  AnthropicClaudeSonnet4 = "anthropic/claude-sonnet-4-latest",
+  AnthropicClaudeOpus4 = "anthropic/claude-opus-4-latest",
+  AnthropicClaudeHaiku4 = "anthropic/claude-haiku-4-latest",
   AnthropicClaude3_7_Sonnet = "anthropic/claude-3-7-sonnet-latest",
   AnthropicClaude3_5_Sonnet = "anthropic/claude-3-5-sonnet-latest",
   AnthropicClaude3_5_Haiku = "anthropic/claude-3-5-haiku-latest",
-  AnthropicClaude3_Opus = "anthropic/claude-3-opus-latest",
 
   // Google
-  Gemini3_1_Pro = "google/gemini-3.1-pro",
-  Gemini3_1_Flash = "google/gemini-3.1-flash",
   Gemini2_5_Pro = "google/gemini-2.5-pro",
+  Gemini2_5_Flash = "google/gemini-2.5-flash",
   Gemini2Flash = "google/gemini-2.0-flash",
-  Gemini2Pro = "google/gemini-2.0-pro-exp",
-  Gemini1_5_Pro = "google/gemini-1.5-pro",
-
 
   // Mistral
   MistralLarge = "mistral/mistral-large-latest",
@@ -53,10 +64,14 @@ export enum TokenBeeModel {
   PerplexitySonarPro = "perplexity/sonar-pro",
   PerplexitySonarReasoning = "perplexity/sonar-reasoning",
 
-  // Groq
-  GroqLlama3_3_70b = "groq/llama-3.3-70b-versatile",
-  GroqLlama3_1_8b = "groq/llama-3.1-8b-instant",
-  GroqDeepSeekR1Distill = "groq/deepseek-r1-distill-llama-70b",
+  // Groq (current — Aug 2026)
+  // Note: model IDs after "groq/" are sent to Groq as-is (may include org prefix).
+  GroqGptOss120b = "groq/openai/gpt-oss-120b",
+  GroqGptOss20b = "groq/openai/gpt-oss-20b",
+  GroqGptOssSafeguard20b = "groq/openai/gpt-oss-safeguard-20b",
+  GroqQwen3_6_27b = "groq/qwen/qwen3.6-27b",
+  GroqCompound = "groq/groq/compound",
+  GroqCompoundMini = "groq/groq/compound-mini",
 
   // xAI
   XAIGrok3 = "xai/grok-3",

@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: tokenbee-sdk
-Version: 1.3.0
+Version: 2.0.0
 Summary: Official Python SDK for TokenBee LLM inference gateway and observability.
 Author: TokenBee Inc.
 Author-email: "TokenBee Inc." <founders@tokenbee.io>

@@ -342,8 +342,19 @@ public static class ProxyHandler
         if (m.Contains("sonar")) return "perplexity";
         if (m.StartsWith("mistral-") || m.StartsWith("pixtral-")) return "mistral";
         if (m.Contains("gemini-")) return "google";
-        if (m.StartsWith("llama-") || m.StartsWith("deepseek-r1-distill")) return "groq";
         if (m.StartsWith("grok-")) return "xai";
+        // Groq-hosted IDs (incl. openai/gpt-oss-*, qwen/*, compound)
+        if (m.StartsWith("llama-") ||
+            m.StartsWith("meta-llama/") ||
+            m.StartsWith("deepseek-") ||
+            m.StartsWith("qwen/") ||
+            m.StartsWith("qwen") ||
+            m.Contains("gpt-oss") ||
+            m.Contains("compound") ||
+            m.StartsWith("moonshotai/") ||
+            m.StartsWith("gemma-") ||
+            m.StartsWith("mixtral-"))
+            return "groq";
 
         return "openai";
     }

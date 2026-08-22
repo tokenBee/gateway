@@ -36,7 +36,7 @@ client = TokenBee(
 
 # Send a request
 response = client.send(
-    model=TokenBeeModel.OPENAI_GPT_4O,
+    model=TokenBeeModel.ANTHROPIC_CLAUDE_SONNET_4,
     input={
         "messages": [
             {"role": "user", "content": "Explain quantum entanglement in simple terms."}
@@ -59,7 +59,7 @@ You can specify the compression rate and method per request. TokenBee uses an in
 
 ```python
 response = client.send(
-    model=TokenBeeModel.ANTHROPIC_CLAUDE_3_5_SONNET,
+    model=TokenBeeModel.ANTHROPIC_CLAUDE_SONNET_4,
     input={
         "messages": [...],
         "compression": "auto",      # "auto" (default), "on", or "off"
@@ -79,9 +79,9 @@ response = client.send(
 
 The SDK provides a `TokenBeeModel` enum with popular models:
 
-- `TokenBeeModel.OPENAI_GPT_4O`
-- `TokenBeeModel.ANTHROPIC_CLAUDE_3_5_SONNET`
-- `TokenBeeModel.GEMINI_2_0_FLASH`
+- `TokenBeeModel.ANTHROPIC_CLAUDE_SONNET_4`
+- `TokenBeeModel.OPENAI_GPT_5_MINI`
+- `TokenBeeModel.GROQ_GPT_OSS_20B`
 - ... and many others.
 
 ## License

@@ -34,7 +34,7 @@ const client = new TokenBee({
 
 // Send a request
 const res = await client.send({
-  model: TokenBeeModel.AnthropicClaude3_5_Sonnet,
+  model: TokenBeeModel.AnthropicClaudeSonnet4,
   input: {
     messages: [{ role: 'user', content: 'Explain quantum entanglement' }],
     compression: 'auto',
@@ -51,7 +51,7 @@ You can specify the compression rate and method per request. TokenBee uses an in
 
 ```typescript
 const res = await client.send({
-  model: TokenBeeModel.AnthropicClaude3_5_Sonnet,
+  model: TokenBeeModel.AnthropicClaudeSonnet4,
   input: {
     messages: [...],
     compression: 'auto',      // 'auto' (default), 'on', or 'off'
