@@ -29,6 +29,8 @@ public class TraceRecord
     public string? OriginalRequestBody { get; set; }
     public string? ResponseBody { get; set; }
     public string? CompressionMetadataJson { get; set; }
+    public bool CaptureEnabled { get; set; } = true;
+    public DateTime? ExpiresAt { get; set; }
 
     public void SetProperties(Dictionary<string, string> properties)
     {

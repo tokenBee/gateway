@@ -22,7 +22,7 @@ public interface ISubscriptionService
 {
     Task<SubscriptionStatus> GetOrCreateAsync(string userId);
     Task IncrementUsageAsync(string userId, int tokenCount);
-    Task<string> CreateCheckoutSessionAsync(string userId, string email, string returnUrl);
+    Task<string> CreateCheckoutSessionAsync(string userId, string email, string returnUrl, string? plan = null);
     Task<string> CreatePortalSessionAsync(string userId, string returnUrl);
     Task HandleWebhookAsync(string json, string signature);
 }
@@ -34,6 +34,7 @@ public class SubscriptionService(IConfiguration config, ILogger<SubscriptionServ
     private readonly string _conn = config.GetConnectionString("Default")!;
     private readonly string _webhookSecret = config["Stripe:WebhookSecret"] ?? "";
     private readonly string _priceId = config["Stripe:PriceId"] ?? "";
+    private readonly string _teamPriceId = config["Stripe:TeamPriceId"] ?? "";
     private const long FreeTokenLimit = 1_000_000;
 
     public async Task<SubscriptionStatus> GetOrCreateAsync(string userId)
@@ -122,7 +123,7 @@ public class SubscriptionService(IConfiguration config, ILogger<SubscriptionServ
         }
     }
 
-    public async Task<string> CreateCheckoutSessionAsync(string userId, string email, string returnUrl)
+    public async Task<string> CreateCheckoutSessionAsync(string userId, string email, string returnUrl, string? plan = null)
     {
         try
         {
@@ -148,6 +149,11 @@ public class SubscriptionService(IConfiguration config, ILogger<SubscriptionServ
                     new { CustomerId = customerId, UserId = userId });
             }
 
+            var selectedPlan = string.Equals(plan, "team", StringComparison.OrdinalIgnoreCase) ? "team" : "pro";
+            var priceId = selectedPlan == "team" && !string.IsNullOrEmpty(_teamPriceId)
+                ? _teamPriceId
+                : _priceId;
+
             // Create checkout session
             var sessionService = new SessionService();
             var session = await sessionService.CreateAsync(new SessionCreateOptions
@@ -160,13 +166,17 @@ public class SubscriptionService(IConfiguration config, ILogger<SubscriptionServ
                 {
                     new()
                     {
-                        Price = _priceId,
+                        Price = priceId,
                         Quantity = 1
                     }
                 },
                 SubscriptionData = new SessionSubscriptionDataOptions
                 {
-                    Metadata = new Dictionary<string, string> { { "user_id", userId } }
+                    Metadata = new Dictionary<string, string>
+                    {
+                        { "user_id", userId },
+                        { "plan", selectedPlan }
+                    }
                 }
             });
 
@@ -221,7 +231,10 @@ public class SubscriptionService(IConfiguration config, ILogger<SubscriptionServ
                     var subscription = stripeEvent.Data.Object as Subscription;
                     if (subscription?.Metadata.TryGetValue("user_id", out var userId) == true)
                     {
-                        var status = subscription.Status == "active" ? "paid" : subscription.Status;
+                        var planName = subscription.Metadata.TryGetValue("plan", out var planMeta) && planMeta == "team"
+                            ? "team"
+                            : "paid";
+                        var status = subscription.Status == "active" ? planName : subscription.Status;
 
                         const string sql = """
                             UPDATE subscriptions SET

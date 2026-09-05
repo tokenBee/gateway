@@ -1,12 +1,12 @@
 # TokenBee TypeScript SDK
 
-Official TypeScript/JavaScript SDK for [TokenBee](https://tokenbee.io) - The Intelligent LLM Inference Gateway with Observability, Compression, and Privacy.
+Official TypeScript/JavaScript SDK for [TokenBee](https://tokenbee.io) — AI interaction capture, audit, replay, and optimization.
 
 ## Features
 
 - **Unified API**: Access multiple LLM providers (OpenAI, Anthropic, Google, Mistral, etc.) through a single interface.
 - **Intelligent Compression**: Reduce token usage and latency with context-aware compression.
-- **Privacy Guard**: Automatic PII masking and privacy-preserving inference.
+- **Configurable Capture**: Retain interaction content when you need it; turn capture off per request or globally.
 - **Built-in Observability**: Automatic tracking of latency, costs, and token usage.
 
 ## Links
@@ -45,9 +45,7 @@ const res = await client.send({
 console.log(res);
 ```
 
-## Compression Control
-
-You can specify the compression rate and method per request. TokenBee uses an intelligent semantic engine to reduce token usage while preserving meaning.
+## Compression & Capture Control
 
 ```typescript
 const res = await client.send({
@@ -56,7 +54,7 @@ const res = await client.send({
     messages: [...],
     compression: 'auto',      // 'auto' (default), 'on', or 'off'
     rate: CompressionRate.High, // Medium (0.5), High (0.33), etc.
-    privacy: true
+    capture: false            // per-request: do not retain message/response bodies
   }
 });
 ```
@@ -65,7 +63,7 @@ const res = await client.send({
 - **`rate`**: Controls the aggressiveness of compression. `High` aims for ~67% token reduction.
 - **`sessionId`**: (Optional) String ID to group multiple requests into a single replayable session in the dashboard.
 - **`userId`**: (Optional) String ID to track usage and costs per unique end-user.
-- **`privacy`**: (Optional) Set to `true` to disable payload logging and session replays for this request. Metadata (latency, tokens) will still be recorded for observability.
+- **`capture`**: (Optional) Per-request override. `false` does not retain messages/responses (metadata like tokens/cost/latency can still be recorded). Precedence: per-request → project setting → default on.
 
 ## Bring Your Own Key (BYOK)
 

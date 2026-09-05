@@ -14,6 +14,7 @@ public static class AuthExtensions
         // Register services
         services.AddSingleton<IApiKeyService, ApiKeyService>();
         services.AddSingleton<ISubscriptionService, SubscriptionService>();
+        services.AddSingleton<ICaptureSettingsService, CaptureSettingsService>();
 
         return services;
     }

@@ -30,6 +30,17 @@ try
                   .AllowAnyHeader()
                   .AllowCredentials();
         });
+        options.AddPolicy("DashboardCors", policy =>
+        {
+            policy.WithOrigins(
+                    "https://www.tokenbee.io",
+                    "https://tokenbee.io",
+                    "https://tokenbee-dashboard.vercel.app"
+                  )
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        });
     });
 
     // Named HttpClient "llm" with 30s timeout and Polly retry

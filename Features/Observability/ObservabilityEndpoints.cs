@@ -13,6 +13,11 @@ public static class ObservabilityEndpoints
         group.MapGet("/by-user", GetByUser);
         group.MapGet("/traces", GetTraces);
         group.MapGet("/traces/{id:guid}", GetTraceById);
+        group.MapDelete("/traces/{id:guid}", DeleteTrace);
+        group.MapGet("/interactions", GetTraces);
+        group.MapGet("/interactions/{id:guid}", GetTraceById);
+        group.MapDelete("/interactions/{id:guid}", DeleteTrace);
+        group.MapGet("/savings", GetSavings);
 
         return app;
     }
@@ -26,12 +31,14 @@ public static class ObservabilityEndpoints
         string? userId,
         string? property,
         string? propertyValue,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         ILogger<MetricsQueries> logger)
     {
         try
         {
             var result = await queries.GetSummaryAsync(
-                days ?? 30, accountId, property, propertyValue);
+                days ?? 30, accountId, property, propertyValue, from, to);
             return Results.Ok(result);
         }
         catch (Exception ex)
@@ -47,11 +54,13 @@ public static class ObservabilityEndpoints
         MetricsQueries queries,
         int? days,
         string? accountId,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         ILogger<MetricsQueries> logger)
     {
         try
         {
-            var result = await queries.GetDailyAsync(days ?? 30, accountId);
+            var result = await queries.GetDailyAsync(days ?? 30, accountId, from, to);
             return Results.Ok(result);
         }
         catch (Exception ex)
@@ -67,11 +76,13 @@ public static class ObservabilityEndpoints
         MetricsQueries queries,
         int? days,
         string? accountId,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         ILogger<MetricsQueries> logger)
     {
         try
         {
-            var result = await queries.GetByModelAsync(days ?? 30, accountId);
+            var result = await queries.GetByModelAsync(days ?? 30, accountId, from, to);
             return Results.Ok(result);
         }
         catch (Exception ex)
@@ -88,11 +99,13 @@ public static class ObservabilityEndpoints
         int? days,
         int? limit,
         string? accountId,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         ILogger<MetricsQueries> logger)
     {
         try
         {
-            var result = await queries.GetByUserAsync(days ?? 30, limit ?? 20, accountId);
+            var result = await queries.GetByUserAsync(days ?? 30, limit ?? 20, accountId, from, to);
             return Results.Ok(result);
         }
         catch (Exception ex)
@@ -115,8 +128,14 @@ public static class ObservabilityEndpoints
         string? propertyValue,
         bool? onlyErrors,
         bool? onlyCompressed,
+        string? provider,
+        string? sessionId,
+        string? q,
         ILogger<MetricsQueries> logger)
     {
+        if (string.IsNullOrWhiteSpace(accountId))
+            return Results.BadRequest(new { error = "accountId is required" });
+
         try
         {
             var effectiveLimit = Math.Min(limit ?? 50, 100);
@@ -124,7 +143,8 @@ public static class ObservabilityEndpoints
                 effectiveLimit, offset ?? 0,
                 accountId, userId, model,
                 property, propertyValue,
-                onlyErrors ?? false, onlyCompressed ?? false);
+                onlyErrors ?? false, onlyCompressed ?? false,
+                provider, sessionId, q);
             return Results.Ok(result);
         }
         catch (Exception ex)
@@ -138,19 +158,69 @@ public static class ObservabilityEndpoints
 
     private static async Task<IResult> GetTraceById(
         Guid id,
+        string? accountId,
         MetricsQueries queries,
         ILogger<MetricsQueries> logger)
     {
+        if (string.IsNullOrWhiteSpace(accountId))
+            return Results.BadRequest(new { error = "accountId is required" });
+
         try
         {
-            var trace = await queries.GetTraceByIdAsync(id);
+            var trace = await queries.GetTraceByIdAsync(id, accountId);
             return trace is not null
                 ? Results.Ok(trace)
-                : Results.NotFound(new { error = $"Trace {id} not found" });
+                : Results.NotFound(new { error = $"Interaction {id} not found" });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to get trace {TraceId}", id);
+            logger.LogError(ex, "Failed to get interaction {TraceId}", id);
+            return Results.Json(new { error = ex.Message }, statusCode: 500);
+        }
+    }
+
+    private static async Task<IResult> DeleteTrace(
+        Guid id,
+        string? accountId,
+        MetricsQueries queries,
+        ILogger<MetricsQueries> logger)
+    {
+        if (string.IsNullOrWhiteSpace(accountId))
+            return Results.BadRequest(new { error = "accountId is required" });
+
+        try
+        {
+            var deleted = await queries.DeleteTraceAsync(id, accountId);
+            return deleted
+                ? Results.Ok(new { deleted = true })
+                : Results.NotFound(new { error = "Interaction not found" });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to delete interaction {TraceId}", id);
+            return Results.Json(new { error = ex.Message }, statusCode: 500);
+        }
+    }
+
+    private static async Task<IResult> GetSavings(
+        MetricsQueries queries,
+        int? days,
+        string? accountId,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        ILogger<MetricsQueries> logger)
+    {
+        if (string.IsNullOrWhiteSpace(accountId))
+            return Results.BadRequest(new { error = "accountId is required" });
+
+        try
+        {
+            var result = await queries.GetSavingsAsync(days ?? 30, accountId, from, to);
+            return Results.Ok(result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get savings");
             return Results.Json(new { error = ex.Message }, statusCode: 500);
         }
     }

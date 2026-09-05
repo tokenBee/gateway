@@ -15,7 +15,9 @@ public static class ProxyHandler
         ITraceLogger traceLogger,
         ICompressionClient compressionClient,
         ISpanRecorder spanRecorder,
-        ISubscriptionService subscriptionService)
+        ISubscriptionService subscriptionService,
+        ICaptureSettingsService captureSettings,
+        MetricsQueries metricsQueries)
     {
         try
         {
@@ -47,9 +49,20 @@ public static class ProxyHandler
             var providerHeader = ctx.Request.Headers["X-TokenBee-Provider"].FirstOrDefault();
             var strategyStr = ctx.Request.Headers["X-TokenBee-Strategy"].FirstOrDefault()?.ToLowerInvariant();
             var contextStr = ctx.Request.Headers["X-TokenBee-Context"].FirstOrDefault()?.ToLowerInvariant() ?? "auto";
-            var privacyStr = ctx.Request.Headers["X-TokenBee-Privacy"].FirstOrDefault()?.ToLowerInvariant();
+            var captureStr = ctx.Request.Headers["X-TokenBee-Capture"].FirstOrDefault();
 
-            bool isPrivate = privacyStr is "true" or "1";
+            var planStatus = sub?.Status ?? "free";
+            var settings = string.IsNullOrEmpty(accountId)
+                ? new CaptureSettings("", true, CaptureDecision.MaxRetentionDays(planStatus), true)
+                : await captureSettings.GetOrCreateAsync(accountId, planStatus);
+
+            var capturedThisMonth = string.IsNullOrEmpty(accountId)
+                ? 0
+                : await metricsQueries.CountCapturedThisMonthAsync(accountId);
+            var overCaptureLimit = capturedThisMonth >= CaptureDecision.MonthlyCaptureLimit(planStatus);
+
+            var storeContent = CaptureDecision.ShouldStoreContent(
+                captureStr, settings.CaptureEnabled, settings.CaptureMessages, overCaptureLimit);
 
             // 4. Determine compression settings
             float rate = 0.5f;
@@ -157,7 +170,8 @@ public static class ProxyHandler
             // 9. Record trace, replay span, and token usage (fire-and-forget)
             RecordObservability(
                 traceLogger, spanRecorder, subscriptionService, sub,
-                path, model, metadata, accountId, isPrivate,
+                path, model, metadata, accountId, storeContent,
+                settings.RetentionDays,
                 outputTokens, (int)llmResponse.StatusCode,
                 stopwatch.ElapsedMilliseconds, isStreaming,
                 body, responseBody, originalBody, compression);
@@ -183,7 +197,8 @@ public static class ProxyHandler
         string model,
         RequestMetadata metadata,
         string? userId,
-        bool isPrivate,
+        bool storeContent,
+        int retentionDays,
         int outputTokens,
         int statusCode,
         long latencyMs,
@@ -195,12 +210,16 @@ public static class ProxyHandler
     {
         // Trace logging
         _ = LogTrace(traceLogger, path, model, metadata, outputTokens,
-            statusCode, latencyMs, isStreaming, requestBody, responseBody, originalRequestBody, compression);
+            statusCode, latencyMs, isStreaming,
+            storeContent ? requestBody : null,
+            storeContent ? responseBody : null,
+            storeContent ? originalRequestBody : null,
+            compression, storeContent, retentionDays);
 
-        // Session replay span (Premium feature: disabled if free limit exceeded)
+        // Session replay span (Premium feature: disabled if free limit exceeded or capture off)
         bool skipPremiumFeatures = sub?.Status == "free" && sub.IsOverFreeLimit;
 
-        if (!string.IsNullOrEmpty(metadata.SessionId) && !isPrivate && !skipPremiumFeatures)
+        if (!string.IsNullOrEmpty(metadata.SessionId) && storeContent && !skipPremiumFeatures)
         {
             _ = spanRecorder.RecordLlmCallAsync(
                 sessionId:     metadata.SessionId,
@@ -246,7 +265,9 @@ public static class ProxyHandler
         string? requestBody,
         string? responseBody,
         string? originalRequestBody,
-        CompressionResult compression)
+        CompressionResult compression,
+        bool storeContent,
+        int retentionDays)
     {
         var (inputCost, outputCost, totalCost) =
             CostCalculator.Calculate(model, compression.CompressedTokens, outputTokens);
@@ -278,7 +299,9 @@ public static class ProxyHandler
             SessionId = metadata.SessionId,
             RequestBody = Truncate(requestBody),
             OriginalRequestBody = Truncate(originalRequestBody),
-            ResponseBody = Truncate(responseBody)
+            ResponseBody = Truncate(responseBody),
+            CaptureEnabled = storeContent,
+            ExpiresAt = DateTime.UtcNow.AddDays(Math.Max(retentionDays, 1))
         };
 
         if (compression.WasCompressed)

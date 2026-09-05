@@ -1,12 +1,12 @@
 # TokenBee Python SDK
 
-Official Python SDK for [TokenBee](https://tokenbee.io) - The Intelligent LLM Inference Gateway with Observability, Compression, and Privacy.
+Official Python SDK for [TokenBee](https://tokenbee.io) — AI interaction capture, audit, replay, and optimization.
 
 ## Features
 
 - **Unified API**: Access multiple LLM providers (OpenAI, Anthropic, Google, Mistral, etc.) through a single interface.
 - **Intelligent Compression**: Reduce token usage and latency with context-aware compression.
-- **Privacy Guard**: Automatic PII masking and privacy-preserving inference.
+- **Configurable Capture**: Retain interaction content when you need it; turn capture off per request or globally.
 - **Built-in Observability**: Automatic tracking of latency, costs, and token usage.
 
 ## Links
@@ -64,7 +64,7 @@ response = client.send(
         "messages": [...],
         "compression": "auto",      # "auto" (default), "on", or "off"
         "rate": CompressionRate.HIGH, # MEDIUM (0.5), HIGH (0.33), etc.
-        "privacy": True
+        "capture": False            # per-request: do not retain message/response bodies
     }
 )
 ```
@@ -73,7 +73,7 @@ response = client.send(
 - **`rate`**: Controls the aggressiveness of compression. `HIGH` aims for ~67% token reduction.
 - **`sessionId`**: (Optional) String ID to group multiple requests into a single replayable session in the dashboard.
 - **`userId`**: (Optional) String ID to track usage and costs per unique end-user.
-- **`privacy`**: (Optional) Set to `True` to disable payload logging and session replays for this request. Metadata (latency, tokens) will still be recorded for observability.
+- **`capture`**: (Optional) Per-request override. `False` does not retain messages/responses (metadata like tokens/cost/latency can still be recorded). Precedence: per-request → project setting → default on.
 
 ### Supported Models
 

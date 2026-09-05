@@ -1,3 +1,5 @@
+using TokenBee.Features.Observability;
+
 namespace TokenBee.Features.Auth;
 
 public static class AuthEndpoints
@@ -10,6 +12,8 @@ public static class AuthEndpoints
         group.MapGet("/keys/{userId}", GetKeys);
         group.MapDelete("/keys/{keyId}", RevokeKey);
         group.MapGet("/subscription/{userId}", GetSubscription);
+        group.MapGet("/capture-settings/{userId}", GetCaptureSettings);
+        group.MapPatch("/capture-settings/{userId}", UpdateCaptureSettings);
         group.MapPost("/subscription/checkout", CreateCheckout);
         group.MapPost("/subscription/portal", CreatePortal);
 
@@ -95,16 +99,91 @@ public static class AuthEndpoints
     private static async Task<IResult> GetSubscription(
         string userId,
         ISubscriptionService subscriptionService,
+        MetricsQueries metricsQueries,
         ILogger<SubscriptionService> logger)
     {
         try
         {
             var status = await subscriptionService.GetOrCreateAsync(userId);
-            return Results.Ok(status);
+            var plan = CaptureDecision.DisplayPlan(status.Status);
+            var captured = await metricsQueries.CountCapturedThisMonthAsync(userId);
+            return Results.Ok(new
+            {
+                status.UserId,
+                status.Status,
+                plan,
+                tokensThisMonth = status.TokensThisMonth,
+                freeTokensUsed = status.FreeTokensUsed,
+                isOverFreeLimit = status.IsOverFreeLimit,
+                stripeCustomerId = status.StripeCustomerId,
+                stripeSubscriptionId = status.StripeSubscriptionId,
+                capturedInteractionsThisMonth = captured,
+                capturedInteractionsLimit = CaptureDecision.MonthlyCaptureLimit(status.Status),
+                maxRetentionDays = CaptureDecision.MaxRetentionDays(status.Status),
+                allowedRetentionDays = CaptureDecision.AllowedRetentionDays(status.Status)
+            });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get subscription status");
+            return Results.Json(new { error = ex.Message }, statusCode: 500);
+        }
+    }
+
+    private static async Task<IResult> GetCaptureSettings(
+        string userId,
+        ICaptureSettingsService captureSettings,
+        ISubscriptionService subscriptionService,
+        ILogger<CaptureSettingsService> logger)
+    {
+        try
+        {
+            var sub = await subscriptionService.GetOrCreateAsync(userId);
+            var settings = await captureSettings.GetOrCreateAsync(userId, sub.Status);
+            return Results.Ok(new
+            {
+                userId = settings.UserId,
+                captureEnabled = settings.CaptureEnabled,
+                retentionDays = settings.RetentionDays,
+                captureMessages = settings.CaptureMessages,
+                maxRetentionDays = captureSettings.MaxRetentionDays(sub.Status),
+                allowedRetentionDays = CaptureDecision.AllowedRetentionDays(sub.Status),
+                plan = CaptureDecision.DisplayPlan(sub.Status)
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to get capture settings");
+            return Results.Json(new { error = ex.Message }, statusCode: 500);
+        }
+    }
+
+    private static async Task<IResult> UpdateCaptureSettings(
+        string userId,
+        UpdateCaptureSettingsRequest request,
+        ICaptureSettingsService captureSettings,
+        ISubscriptionService subscriptionService,
+        ILogger<CaptureSettingsService> logger)
+    {
+        try
+        {
+            var sub = await subscriptionService.GetOrCreateAsync(userId);
+            var settings = await captureSettings.UpdateAsync(
+                userId, request.CaptureEnabled, request.RetentionDays, request.CaptureMessages, sub.Status);
+            return Results.Ok(new
+            {
+                userId = settings.UserId,
+                captureEnabled = settings.CaptureEnabled,
+                retentionDays = settings.RetentionDays,
+                captureMessages = settings.CaptureMessages,
+                maxRetentionDays = captureSettings.MaxRetentionDays(sub.Status),
+                allowedRetentionDays = CaptureDecision.AllowedRetentionDays(sub.Status),
+                plan = CaptureDecision.DisplayPlan(sub.Status)
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to update capture settings");
             return Results.Json(new { error = ex.Message }, statusCode: 500);
         }
     }
@@ -122,7 +201,7 @@ public static class AuthEndpoints
                 return Results.BadRequest(new { error = "userId is required" });
 
             var url = await subscriptionService.CreateCheckoutSessionAsync(
-                request.UserId, request.Email ?? "", request.ReturnUrl ?? "/settings");
+                request.UserId, request.Email ?? "", request.ReturnUrl ?? "/settings", request.Plan);
 
             return Results.Ok(new { url });
         }
@@ -187,6 +266,7 @@ public static class AuthEndpoints
     // ─── Request DTOs ───────────────────────────────────────────
 
     private record CreateKeyRequest(string UserId, string? Name);
-    private record CheckoutRequest(string UserId, string? Email, string? ReturnUrl);
+    private record CheckoutRequest(string UserId, string? Email, string? ReturnUrl, string? Plan);
     private record PortalRequest(string UserId, string? ReturnUrl);
+    private record UpdateCaptureSettingsRequest(bool? CaptureEnabled, int? RetentionDays, bool? CaptureMessages);
 }

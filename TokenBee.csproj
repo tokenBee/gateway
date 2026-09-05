@@ -11,6 +11,10 @@
     <Content Remove="Controllers\**" />
     <EmbeddedResource Remove="Controllers\**" />
     <None Remove="Controllers\**" />
+    <Compile Remove="TokenBee.Tests\**" />
+    <Content Remove="TokenBee.Tests\**" />
+    <EmbeddedResource Remove="TokenBee.Tests\**" />
+    <None Remove="TokenBee.Tests\**" />
   </ItemGroup>
 
 

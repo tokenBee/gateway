@@ -1,6 +1,6 @@
 {
   "name": "@tokenbee/sdk",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Official TypeScript SDK for TokenBee LLM inference gateway and observability.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +18,7 @@
   "homepage": "https://tokenbee.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tokenBee/gateway"
+    "url": "git+https://github.com/tokenBee/gateway.git"
   },
   "license": "MIT",
   "devDependencies": {

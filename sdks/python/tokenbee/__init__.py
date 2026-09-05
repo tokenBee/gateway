@@ -1,6 +1,7 @@
 import os
 import httpx
 from enum import Enum
+from typing import Optional
 
 class CompressionRate(str, Enum):
     LOW = "0.75"
@@ -90,7 +91,7 @@ class TokenBee:
         context: str = TokenBeeContext.AUTO,
         model: str = "", 
         provider: str = "",
-        privacy: bool = False
+        capture: Optional[bool] = None
     ):
         self.api_key = api_key
         self.llm_key = llm_key
@@ -104,8 +105,9 @@ class TokenBee:
             "X-TokenBee-Rate": rate,
             "X-TokenBee-Strategy": strategy,
             "X-TokenBee-Context": context,
-            "X-TokenBee-Privacy": str(privacy).lower()
         }
+        if capture is not None:
+            self.headers["X-TokenBee-Capture"] = str(capture).lower()
         if model:
             self.headers["X-TokenBee-Model"] = model
         if provider:
@@ -130,8 +132,8 @@ class TokenBee:
             headers["X-TokenBee-Strategy"] = str(input["strategy"])
         if "context" in input:
             headers["X-TokenBee-Context"] = str(input["context"])
-        if "privacy" in input:
-            headers["X-TokenBee-Privacy"] = str(input["privacy"]).lower()
+        if "capture" in input:
+            headers["X-TokenBee-Capture"] = str(input["capture"]).lower()
         if "sessionId" in input:
             headers["X-TB-Session-Id"] = str(input["sessionId"])
         if "userId" in input:
@@ -143,7 +145,7 @@ class TokenBee:
         payload.pop("rate", None)
         payload.pop("strategy", None)
         payload.pop("context", None)
-        payload.pop("privacy", None)
+        payload.pop("capture", None)
         payload.pop("sessionId", None)
         payload.pop("userId", None)
 

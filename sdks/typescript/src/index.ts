@@ -86,7 +86,7 @@ export interface TokenBeeOptions {
   context?: TokenBeeContext | string;
   model?: TokenBeeModel | string;
   provider?: string;
-  privacy?: boolean;
+  capture?: boolean;
 }
 
 export class TokenBee {
@@ -123,9 +123,9 @@ export class TokenBee {
     if (params.input.sessionId) headers["X-TB-Session-Id"] = params.input.sessionId;
     if (params.input.userId) headers["X-TB-User-Id"] = params.input.userId;
 
-    const privacy = params.input.privacy !== undefined ? params.input.privacy : this.options.privacy;
-    if (privacy !== undefined) {
-      headers["X-TokenBee-Privacy"] = String(privacy);
+    const capture = params.input.capture !== undefined ? params.input.capture : this.options.capture;
+    if (capture !== undefined) {
+      headers["X-TokenBee-Capture"] = String(capture);
     }
 
     const payload = { model: modelName, ...params.input };
@@ -134,7 +134,7 @@ export class TokenBee {
     delete payload.rate;
     delete payload.strategy;
     delete payload.context;
-    delete payload.privacy;
+    delete payload.capture;
     delete payload.sessionId;
     delete payload.userId;
 
