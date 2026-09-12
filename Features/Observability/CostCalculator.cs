@@ -3,10 +3,11 @@ namespace TokenBee.Features.Observability;
 public static class CostCalculator
 {
     // Longer prefixes must come first (prefix match is StartsWith).
-    // Rates are USD per 1M tokens. Sources: provider public pricing as of Aug 2026.
+    // Rates are USD per 1M tokens. Sources: provider public pricing as of Sep 2026.
     private static readonly List<(string Prefix, decimal InputPer1M, decimal OutputPer1M)> Pricing =
     [
-        // OpenAI — GPT-5.6 / GPT-5 family (longer prefixes first)
+        // OpenAI — GPT-6 / GPT-5.6 family (longer prefixes first)
+        ("gpt-6-astra",         10.00m,   50.00m),
         ("gpt-5.6-sol",          4.00m,   20.00m),
         ("gpt-5.6-terra",        2.00m,   12.00m),
         ("gpt-5.6-luna",         0.20m,    1.20m),
@@ -30,6 +31,11 @@ public static class CostCalculator
         ("o1",                  15.00m,   60.00m),
 
         // Anthropic
+        ("claude-fable-5-1",    10.00m,   50.00m),
+        ("claude-fable-5",      10.00m,   50.00m),
+        ("claude-opus-5",        5.00m,   25.00m),
+        ("claude-sonnet-5",      2.00m,   10.00m),
+        ("claude-haiku-4-5",     1.00m,    5.00m),
         ("claude-opus-4",       15.00m,   75.00m),
         ("claude-sonnet-4",      3.00m,   15.00m),
         ("claude-haiku-4",       0.80m,    4.00m),
@@ -42,6 +48,8 @@ public static class CostCalculator
         ("claude-3-opus",       15.00m,   75.00m),
 
         // Google
+        ("gemini-3.8-flash",     0.75m,    3.75m),
+        ("gemini-3.1-pro",       1.25m,   10.00m),
         ("gemini-2.5-pro",       1.25m,   10.00m),
         ("gemini-2.5-flash",     0.15m,    0.60m),
         ("gemini-2.0-flash",     0.10m,    0.40m),
@@ -71,6 +79,8 @@ public static class CostCalculator
         ("deepseek-r1-distill",  0.55m,    2.19m),
 
         // xAI
+        ("grok-4.6",             2.00m,    6.00m),
+        ("grok-4",               2.00m,    6.00m),
         ("grok-3",               5.00m,   15.00m),
         ("grok-2-mini",          0.60m,    2.40m),
         ("grok-2",               2.00m,   10.00m),

@@ -19,7 +19,8 @@ export enum TokenBeeContext {
 }
 
 export enum TokenBeeModel {
-  // OpenAI — current GPT-5.6 / GPT-5 family
+  // OpenAI — GPT-6 / GPT-5.6 family
+  OpenAIGPT6Astra = "openai/gpt-6-astra",
   OpenAIGPT5_6Sol = "openai/gpt-5.6-sol",
   OpenAIGPT5_6Terra = "openai/gpt-5.6-terra",
   OpenAIGPT5_6Luna = "openai/gpt-5.6-luna",
@@ -41,6 +42,10 @@ export enum TokenBeeModel {
   OpenAIO1Mini = "openai/o1-mini",
 
   // Anthropic
+  AnthropicClaudeFable5_1 = "anthropic/claude-fable-5-1",
+  AnthropicClaudeOpus5 = "anthropic/claude-opus-5",
+  AnthropicClaudeSonnet5 = "anthropic/claude-sonnet-5",
+  AnthropicClaudeHaiku4_5 = "anthropic/claude-haiku-4-5",
   AnthropicClaudeSonnet4 = "anthropic/claude-sonnet-4-latest",
   AnthropicClaudeOpus4 = "anthropic/claude-opus-4-latest",
   AnthropicClaudeHaiku4 = "anthropic/claude-haiku-4-latest",
@@ -49,6 +54,8 @@ export enum TokenBeeModel {
   AnthropicClaude3_5_Haiku = "anthropic/claude-3-5-haiku-latest",
 
   // Google
+  Gemini3_8_Flash = "google/gemini-3.8-flash",
+  Gemini3_1_Pro = "google/gemini-3.1-pro-preview",
   Gemini2_5_Pro = "google/gemini-2.5-pro",
   Gemini2_5_Flash = "google/gemini-2.5-flash",
   Gemini2Flash = "google/gemini-2.0-flash",
@@ -74,6 +81,7 @@ export enum TokenBeeModel {
   GroqCompoundMini = "groq/groq/compound-mini",
 
   // xAI
+  XAIGrok4_6 = "xai/grok-4.6",
   XAIGrok3 = "xai/grok-3",
   XAIGrok2 = "xai/grok-2-1212",
   XAIGrok2Mini = "xai/grok-2-mini-1212",

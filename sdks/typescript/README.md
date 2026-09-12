@@ -34,7 +34,7 @@ const client = new TokenBee({
 
 // Send a request
 const res = await client.send({
-  model: TokenBeeModel.AnthropicClaudeSonnet4,
+  model: TokenBeeModel.OpenAIGPT6Astra,
   input: {
     messages: [{ role: 'user', content: 'Explain quantum entanglement' }],
     compression: 'auto',

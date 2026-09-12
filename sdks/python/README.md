@@ -79,9 +79,10 @@ response = client.send(
 
 The SDK provides a `TokenBeeModel` enum with popular models:
 
-- `TokenBeeModel.ANTHROPIC_CLAUDE_SONNET_4`
-- `TokenBeeModel.OPENAI_GPT_5_MINI`
-- `TokenBeeModel.GROQ_GPT_OSS_20B`
+- `TokenBeeModel.OPENAI_GPT_6_ASTRA`
+- `TokenBeeModel.ANTHROPIC_CLAUDE_FABLE_5_1`
+- `TokenBeeModel.GEMINI_3_8_FLASH`
+- `TokenBeeModel.XAI_GROK_4_6`
 - ... and many others.
 
 ## License

@@ -21,7 +21,8 @@ class TokenBeeContext(str, Enum):
     CODE = "code"
 
 class TokenBeeModel(str, Enum):
-    # OpenAI — current GPT-5.6 / GPT-5 family
+    # OpenAI — GPT-6 / GPT-5.6 family
+    OPENAI_GPT_6_ASTRA = "openai/gpt-6-astra"
     OPENAI_GPT_5_6_SOL = "openai/gpt-5.6-sol"
     OPENAI_GPT_5_6_TERRA = "openai/gpt-5.6-terra"
     OPENAI_GPT_5_6_LUNA = "openai/gpt-5.6-luna"
@@ -43,6 +44,10 @@ class TokenBeeModel(str, Enum):
     OPENAI_O1_MINI = "openai/o1-mini"
 
     # Anthropic
+    ANTHROPIC_CLAUDE_FABLE_5_1 = "anthropic/claude-fable-5-1"
+    ANTHROPIC_CLAUDE_OPUS_5 = "anthropic/claude-opus-5"
+    ANTHROPIC_CLAUDE_SONNET_5 = "anthropic/claude-sonnet-5"
+    ANTHROPIC_CLAUDE_HAIKU_4_5 = "anthropic/claude-haiku-4-5"
     ANTHROPIC_CLAUDE_SONNET_4 = "anthropic/claude-sonnet-4-latest"
     ANTHROPIC_CLAUDE_OPUS_4 = "anthropic/claude-opus-4-latest"
     ANTHROPIC_CLAUDE_HAIKU_4 = "anthropic/claude-haiku-4-latest"
@@ -51,6 +56,8 @@ class TokenBeeModel(str, Enum):
     ANTHROPIC_CLAUDE_3_5_HAIKU = "anthropic/claude-3-5-haiku-latest"
 
     # Google
+    GEMINI_3_8_FLASH = "google/gemini-3.8-flash"
+    GEMINI_3_1_PRO = "google/gemini-3.1-pro-preview"
     GEMINI_2_5_PRO = "google/gemini-2.5-pro"
     GEMINI_2_5_FLASH = "google/gemini-2.5-flash"
     GEMINI_2_0_FLASH = "google/gemini-2.0-flash"
@@ -76,6 +83,7 @@ class TokenBeeModel(str, Enum):
     GROQ_COMPOUND_MINI = "groq/groq/compound-mini"
 
     # xAI
+    XAI_GROK_4_6 = "xai/grok-4.6"
     XAI_GROK_3 = "xai/grok-3"
     XAI_GROK_2 = "xai/grok-2-1212"
     XAI_GROK_2_MINI = "xai/grok-2-mini-1212"
