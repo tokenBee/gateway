@@ -15,6 +15,11 @@ public static class AuthExtensions
         services.AddSingleton<IApiKeyService, ApiKeyService>();
         services.AddSingleton<ISubscriptionService, SubscriptionService>();
         services.AddSingleton<ICaptureSettingsService, CaptureSettingsService>();
+        services.AddSingleton<TokenBee.Shared.Auth.SupabaseUserService>();
+        services.AddHttpClient("supabase-auth", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(8);
+        });
 
         return services;
     }

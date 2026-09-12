@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Dapper;
 using Npgsql;
+using TokenBee.Shared.Auth;
 
 namespace TokenBee.Features.Replay;
 
@@ -35,6 +36,7 @@ public static class ReplayEndpoints
     // ──── GET /api/replay/sessions ────
 
     private static async Task<IResult> GetSessions(
+        HttpContext ctx,
         IConfiguration configuration,
         int? limit,
         int? offset,
@@ -42,6 +44,7 @@ public static class ReplayEndpoints
     {
         try
         {
+            var accountId = ctx.RequireAccountId();
             var effectiveLimit = Math.Clamp(limit ?? 20, 1, 100);
             var effectiveOffset = Math.Max(offset ?? 0, 0);
 
@@ -54,6 +57,10 @@ public static class ReplayEndpoints
                        MAX(sp.timestamp)                    AS LastActivity
                 FROM sessions s
                 LEFT JOIN spans sp ON sp.session_id = s.id
+                WHERE EXISTS (
+                    SELECT 1 FROM traces t
+                    WHERE t.session_id = s.id AND t.account_id = @AccountId
+                )
                 GROUP BY s.id
                 ORDER BY s.started_at DESC
                 LIMIT @Limit OFFSET @Offset
@@ -62,7 +69,7 @@ public static class ReplayEndpoints
             await using var connection = new NpgsqlConnection(
                 configuration.GetConnectionString("Default"));
             var rows = await connection.QueryAsync<SessionSummaryRow>(
-                sql, new { Limit = effectiveLimit, Offset = effectiveOffset });
+                sql, new { Limit = effectiveLimit, Offset = effectiveOffset, AccountId = accountId });
 
             var result = rows.Select(r => new SessionSummaryDto
             {
@@ -91,6 +98,7 @@ public static class ReplayEndpoints
     // ──── GET /api/replay/sessions/search ────
 
     private static async Task<IResult> SearchSessions(
+        HttpContext ctx,
         IConfiguration configuration,
         string? q,
         int? limit,
@@ -101,6 +109,7 @@ public static class ReplayEndpoints
             if (string.IsNullOrWhiteSpace(q))
                 return Results.Ok(Array.Empty<SessionSummaryDto>());
 
+            var accountId = ctx.RequireAccountId();
             var effectiveLimit = Math.Clamp(limit ?? 20, 1, 100);
 
             var sql = """
@@ -112,9 +121,13 @@ public static class ReplayEndpoints
                        MAX(sp.timestamp)                    AS LastActivity
                 FROM sessions s
                 LEFT JOIN spans sp ON sp.session_id = s.id
-                WHERE s.id ILIKE '%' || @Q || '%'
+                WHERE EXISTS (
+                    SELECT 1 FROM traces t
+                    WHERE t.session_id = s.id AND t.account_id = @AccountId
+                )
+                  AND (s.id ILIKE '%' || @Q || '%'
                    OR s.name ILIKE '%' || @Q || '%'
-                   OR s.agent_type ILIKE '%' || @Q || '%'
+                   OR s.agent_type ILIKE '%' || @Q || '%')
                 GROUP BY s.id
                 ORDER BY s.started_at DESC
                 LIMIT @Limit
@@ -123,7 +136,7 @@ public static class ReplayEndpoints
             await using var connection = new NpgsqlConnection(
                 configuration.GetConnectionString("Default"));
             var rows = await connection.QueryAsync<SessionSummaryRow>(
-                sql, new { Q = q, Limit = effectiveLimit });
+                sql, new { Q = q, Limit = effectiveLimit, AccountId = accountId });
 
             var result = rows.Select(r => new SessionSummaryDto
             {
@@ -152,6 +165,7 @@ public static class ReplayEndpoints
     // ──── GET /api/replay/sessions/{id} ────
 
     private static async Task<IResult> GetSessionById(
+        HttpContext ctx,
         string id,
         IConfiguration configuration,
         ILogger<SpanRecorder> logger)
@@ -160,6 +174,9 @@ public static class ReplayEndpoints
         {
             await using var connection = new NpgsqlConnection(
                 configuration.GetConnectionString("Default"));
+
+            if (!await SessionVisibleAsync(connection, id, ctx.RequireAccountId()))
+                return Results.NotFound(new { error = $"Session {id} not found" });
 
             var sessionSql = """
                 SELECT id, name, agent_type AS AgentType,
@@ -233,6 +250,7 @@ public static class ReplayEndpoints
     // ──── GET /api/replay/sessions/{id}/timeline ────
 
     private static async Task<IResult> GetTimeline(
+        HttpContext ctx,
         string id,
         IConfiguration configuration,
         ILogger<SpanRecorder> logger)
@@ -242,10 +260,7 @@ public static class ReplayEndpoints
             await using var connection = new NpgsqlConnection(
                 configuration.GetConnectionString("Default"));
 
-            // Verify session exists
-            var exists = await connection.ExecuteScalarAsync<bool>(
-                "SELECT EXISTS(SELECT 1 FROM sessions WHERE id = @Id)",
-                new { Id = id });
+            var exists = await SessionVisibleAsync(connection, id, ctx.RequireAccountId());
 
             if (!exists)
                 return Results.NotFound(new { error = $"Session {id} not found" });
@@ -306,6 +321,7 @@ public static class ReplayEndpoints
     // ──── GET /api/replay/spans/{id}/payload ────
 
     private static async Task<IResult> GetSpanPayload(
+        HttpContext ctx,
         Guid id,
         IConfiguration configuration,
         ILogger<SpanRecorder> logger)
@@ -320,6 +336,18 @@ public static class ReplayEndpoints
 
             await using var connection = new NpgsqlConnection(
                 configuration.GetConnectionString("Default"));
+
+            var owned = await connection.ExecuteScalarAsync<bool>("""
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM spans sp
+                    JOIN traces t ON t.session_id = sp.session_id
+                    WHERE sp.id = @Id AND t.account_id = @AccountId
+                )
+                """, new { Id = id, AccountId = ctx.RequireAccountId() });
+            if (!owned)
+                return Results.NotFound(new { error = $"Span {id} not found" });
+
             var span = await connection.QueryFirstOrDefaultAsync<Span>(sql, new { Id = id });
 
             if (span is null)
@@ -446,19 +474,23 @@ public static class ReplayEndpoints
     // ──── PATCH /api/replay/sessions/{id}/end (unchanged) ────
 
     private static async Task<IResult> EndSession(
+        HttpContext ctx,
         string id,
         IConfiguration configuration,
         ILogger<SpanRecorder> logger)
     {
         try
         {
+            await using var connection = new NpgsqlConnection(
+                configuration.GetConnectionString("Default"));
+            if (!await SessionWritableAsync(connection, id, ctx.RequireAccountId()))
+                return Results.NotFound(new { error = $"Session {id} not found" });
+
             var sql = """
                 UPDATE sessions SET ended_at = NOW()
                 WHERE id = @Id AND ended_at IS NULL
                 """;
 
-            await using var connection = new NpgsqlConnection(
-                configuration.GetConnectionString("Default"));
             var rows = await connection.ExecuteAsync(sql, new { Id = id });
 
             if (rows == 0)
@@ -483,7 +515,9 @@ public static class ReplayEndpoints
     // ──── POST /api/replay/spans (unchanged) ────
 
     private static async Task<IResult> CreateSpan(
+        HttpContext ctx,
         CreateSpanRequest request,
+        IConfiguration configuration,
         ISpanRecorder spanRecorder,
         ILogger<SpanRecorder> logger)
     {
@@ -494,6 +528,11 @@ public static class ReplayEndpoints
 
             if (!ValidSpanTypes.Contains(request.Type))
                 return Results.BadRequest(new { error = $"Invalid type '{request.Type}'. Must be one of: LlmCall, ToolCall, Decision, Custom" });
+
+            await using var connection = new NpgsqlConnection(
+                configuration.GetConnectionString("Default"));
+            if (!await SessionWritableAsync(connection, request.SessionId, ctx.RequireAccountId()))
+                return Results.NotFound(new { error = $"Session {request.SessionId} not found" });
 
             var metadataJson = request.Metadata is not null
                 ? JsonSerializer.Serialize(request.Metadata)
@@ -522,6 +561,30 @@ public static class ReplayEndpoints
     }
 
     // ──── Helpers ────
+
+    private static Task<bool> SessionVisibleAsync(NpgsqlConnection connection, string sessionId, string accountId) =>
+        connection.ExecuteScalarAsync<bool>("""
+            SELECT EXISTS (
+                SELECT 1 FROM traces
+                WHERE session_id = @SessionId AND account_id = @AccountId
+            )
+            """, new { SessionId = sessionId, AccountId = accountId });
+
+    /// <summary>
+    /// Allow writes to a session the account owns, or to a session that has no traces yet
+    /// (just created from the dashboard). Never write into another account's session.
+    /// </summary>
+    private static async Task<bool> SessionWritableAsync(
+        NpgsqlConnection connection, string sessionId, string accountId)
+    {
+        var owned = await SessionVisibleAsync(connection, sessionId, accountId);
+        if (owned) return true;
+
+        var hasAnyTraces = await connection.ExecuteScalarAsync<bool>("""
+            SELECT EXISTS (SELECT 1 FROM traces WHERE session_id = @SessionId)
+            """, new { SessionId = sessionId });
+        return !hasAnyTraces;
+    }
 
     private static object ParseMetadata(string? metadataJson)
     {

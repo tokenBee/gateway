@@ -77,6 +77,10 @@ try
     // API key middleware — validates /v1/* routes, skips dashboard/replay/auth
     app.UseMiddleware<ApiKeyMiddleware>();
 
+    // Dashboard/replay/account APIs require a Supabase session. Account id is taken
+    // from the JWT, never from query/body parameters.
+    app.UseMiddleware<DashboardAuthMiddleware>();
+
     app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
     app.MapPost("/v1/{**path}", ProxyHandler.Handle);
     app.MapObservabilityEndpoints();

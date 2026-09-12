@@ -1,4 +1,5 @@
 using TokenBee.Features.Observability;
+using TokenBee.Shared.Auth;
 
 namespace TokenBee.Features.Auth;
 
@@ -26,16 +27,15 @@ public static class AuthEndpoints
     // ──── POST /api/auth/keys ────
 
     private static async Task<IResult> CreateKey(
+        HttpContext ctx,
         CreateKeyRequest request,
         IApiKeyService apiKeyService,
         ILogger<ApiKeyService> logger)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request.UserId))
-                return Results.BadRequest(new { error = "userId is required" });
-
-            var result = await apiKeyService.CreateAsync(request.UserId, request.Name ?? "Unnamed Key");
+            var userId = ctx.RequireAccountId();
+            var result = await apiKeyService.CreateAsync(userId, request.Name ?? "Unnamed Key");
 
             return Results.Ok(new
             {
@@ -55,13 +55,18 @@ public static class AuthEndpoints
     // ──── GET /api/auth/keys/{userId} ────
 
     private static async Task<IResult> GetKeys(
+        HttpContext ctx,
         string userId,
         IApiKeyService apiKeyService,
         ILogger<ApiKeyService> logger)
     {
         try
         {
-            var keys = await apiKeyService.GetByUserAsync(userId);
+            var accountId = ctx.RequireAccountId();
+            if (!string.Equals(userId, accountId, StringComparison.Ordinal))
+                return Results.Json(new { error = "Forbidden" }, statusCode: 403);
+
+            var keys = await apiKeyService.GetByUserAsync(accountId);
             return Results.Ok(keys);
         }
         catch (Exception ex)
@@ -74,14 +79,14 @@ public static class AuthEndpoints
     // ──── DELETE /api/auth/keys/{keyId}?userId=xxx ────
 
     private static async Task<IResult> RevokeKey(
+        HttpContext ctx,
         string keyId,
-        string userId,
         IApiKeyService apiKeyService,
         ILogger<ApiKeyService> logger)
     {
         try
         {
-            var revoked = await apiKeyService.RevokeAsync(keyId, userId);
+            var revoked = await apiKeyService.RevokeAsync(keyId, ctx.RequireAccountId());
 
             return revoked
                 ? Results.Ok(new { revoked = true })
@@ -97,6 +102,7 @@ public static class AuthEndpoints
     // ──── GET /api/auth/subscription/{userId} ────
 
     private static async Task<IResult> GetSubscription(
+        HttpContext ctx,
         string userId,
         ISubscriptionService subscriptionService,
         MetricsQueries metricsQueries,
@@ -104,9 +110,13 @@ public static class AuthEndpoints
     {
         try
         {
-            var status = await subscriptionService.GetOrCreateAsync(userId);
+            var accountId = ctx.RequireAccountId();
+            if (!string.Equals(userId, accountId, StringComparison.Ordinal))
+                return Results.Json(new { error = "Forbidden" }, statusCode: 403);
+
+            var status = await subscriptionService.GetOrCreateAsync(accountId);
             var plan = CaptureDecision.DisplayPlan(status.Status);
-            var captured = await metricsQueries.CountCapturedThisMonthAsync(userId);
+            var captured = await metricsQueries.CountCapturedThisMonthAsync(accountId);
             return Results.Ok(new
             {
                 status.UserId,
@@ -131,6 +141,7 @@ public static class AuthEndpoints
     }
 
     private static async Task<IResult> GetCaptureSettings(
+        HttpContext ctx,
         string userId,
         ICaptureSettingsService captureSettings,
         ISubscriptionService subscriptionService,
@@ -138,8 +149,12 @@ public static class AuthEndpoints
     {
         try
         {
-            var sub = await subscriptionService.GetOrCreateAsync(userId);
-            var settings = await captureSettings.GetOrCreateAsync(userId, sub.Status);
+            var accountId = ctx.RequireAccountId();
+            if (!string.Equals(userId, accountId, StringComparison.Ordinal))
+                return Results.Json(new { error = "Forbidden" }, statusCode: 403);
+
+            var sub = await subscriptionService.GetOrCreateAsync(accountId);
+            var settings = await captureSettings.GetOrCreateAsync(accountId, sub.Status);
             return Results.Ok(new
             {
                 userId = settings.UserId,
@@ -159,6 +174,7 @@ public static class AuthEndpoints
     }
 
     private static async Task<IResult> UpdateCaptureSettings(
+        HttpContext ctx,
         string userId,
         UpdateCaptureSettingsRequest request,
         ICaptureSettingsService captureSettings,
@@ -167,9 +183,13 @@ public static class AuthEndpoints
     {
         try
         {
-            var sub = await subscriptionService.GetOrCreateAsync(userId);
+            var accountId = ctx.RequireAccountId();
+            if (!string.Equals(userId, accountId, StringComparison.Ordinal))
+                return Results.Json(new { error = "Forbidden" }, statusCode: 403);
+
+            var sub = await subscriptionService.GetOrCreateAsync(accountId);
             var settings = await captureSettings.UpdateAsync(
-                userId, request.CaptureEnabled, request.RetentionDays, request.CaptureMessages, sub.Status);
+                accountId, request.CaptureEnabled, request.RetentionDays, request.CaptureMessages, sub.Status);
             return Results.Ok(new
             {
                 userId = settings.UserId,
@@ -191,17 +211,16 @@ public static class AuthEndpoints
     // ──── POST /api/auth/subscription/checkout ────
 
     private static async Task<IResult> CreateCheckout(
+        HttpContext ctx,
         CheckoutRequest request,
         ISubscriptionService subscriptionService,
         ILogger<SubscriptionService> logger)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request.UserId))
-                return Results.BadRequest(new { error = "userId is required" });
-
+            var userId = ctx.RequireAccountId();
             var url = await subscriptionService.CreateCheckoutSessionAsync(
-                request.UserId, request.Email ?? "", request.ReturnUrl ?? "/settings", request.Plan);
+                userId, request.Email ?? "", request.ReturnUrl ?? "/settings", request.Plan);
 
             return Results.Ok(new { url });
         }
@@ -215,17 +234,16 @@ public static class AuthEndpoints
     // ──── POST /api/auth/subscription/portal ────
 
     private static async Task<IResult> CreatePortal(
+        HttpContext ctx,
         PortalRequest request,
         ISubscriptionService subscriptionService,
         ILogger<SubscriptionService> logger)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(request.UserId))
-                return Results.BadRequest(new { error = "userId is required" });
-
+            var userId = ctx.RequireAccountId();
             var url = await subscriptionService.CreatePortalSessionAsync(
-                request.UserId, request.ReturnUrl ?? "/settings");
+                userId, request.ReturnUrl ?? "/settings");
 
             return Results.Ok(new { url });
         }

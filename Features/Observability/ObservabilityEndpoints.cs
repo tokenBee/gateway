@@ -1,3 +1,5 @@
+using TokenBee.Shared.Auth;
+
 namespace TokenBee.Features.Observability;
 
 public static class ObservabilityEndpoints
@@ -22,12 +24,10 @@ public static class ObservabilityEndpoints
         return app;
     }
 
-    // ──── 1. GET /api/dashboard/summary ────
-
     private static async Task<IResult> GetSummary(
+        HttpContext ctx,
         MetricsQueries queries,
         int? days,
-        string? accountId,
         string? userId,
         string? property,
         string? propertyValue,
@@ -35,6 +35,7 @@ public static class ObservabilityEndpoints
         DateTimeOffset? to,
         ILogger<MetricsQueries> logger)
     {
+        var accountId = ctx.RequireAccountId();
         try
         {
             var result = await queries.GetSummaryAsync(
@@ -48,16 +49,15 @@ public static class ObservabilityEndpoints
         }
     }
 
-    // ──── 2. GET /api/dashboard/daily ────
-
     private static async Task<IResult> GetDaily(
+        HttpContext ctx,
         MetricsQueries queries,
         int? days,
-        string? accountId,
         DateTimeOffset? from,
         DateTimeOffset? to,
         ILogger<MetricsQueries> logger)
     {
+        var accountId = ctx.RequireAccountId();
         try
         {
             var result = await queries.GetDailyAsync(days ?? 30, accountId, from, to);
@@ -70,16 +70,15 @@ public static class ObservabilityEndpoints
         }
     }
 
-    // ──── 3. GET /api/dashboard/by-model ────
-
     private static async Task<IResult> GetByModel(
+        HttpContext ctx,
         MetricsQueries queries,
         int? days,
-        string? accountId,
         DateTimeOffset? from,
         DateTimeOffset? to,
         ILogger<MetricsQueries> logger)
     {
+        var accountId = ctx.RequireAccountId();
         try
         {
             var result = await queries.GetByModelAsync(days ?? 30, accountId, from, to);
@@ -92,17 +91,16 @@ public static class ObservabilityEndpoints
         }
     }
 
-    // ──── 4. GET /api/dashboard/by-user ────
-
     private static async Task<IResult> GetByUser(
+        HttpContext ctx,
         MetricsQueries queries,
         int? days,
         int? limit,
-        string? accountId,
         DateTimeOffset? from,
         DateTimeOffset? to,
         ILogger<MetricsQueries> logger)
     {
+        var accountId = ctx.RequireAccountId();
         try
         {
             var result = await queries.GetByUserAsync(days ?? 30, limit ?? 20, accountId, from, to);
@@ -115,13 +113,11 @@ public static class ObservabilityEndpoints
         }
     }
 
-    // ──── 5. GET /api/dashboard/traces ────
-
     private static async Task<IResult> GetTraces(
+        HttpContext ctx,
         MetricsQueries queries,
         int? limit,
         int? offset,
-        string? accountId,
         string? userId,
         string? model,
         string? property,
@@ -133,9 +129,7 @@ public static class ObservabilityEndpoints
         string? q,
         ILogger<MetricsQueries> logger)
     {
-        if (string.IsNullOrWhiteSpace(accountId))
-            return Results.BadRequest(new { error = "accountId is required" });
-
+        var accountId = ctx.RequireAccountId();
         try
         {
             var effectiveLimit = Math.Min(limit ?? 50, 100);
@@ -154,17 +148,13 @@ public static class ObservabilityEndpoints
         }
     }
 
-    // ──── 6. GET /api/dashboard/traces/{id} ────
-
     private static async Task<IResult> GetTraceById(
+        HttpContext ctx,
         Guid id,
-        string? accountId,
         MetricsQueries queries,
         ILogger<MetricsQueries> logger)
     {
-        if (string.IsNullOrWhiteSpace(accountId))
-            return Results.BadRequest(new { error = "accountId is required" });
-
+        var accountId = ctx.RequireAccountId();
         try
         {
             var trace = await queries.GetTraceByIdAsync(id, accountId);
@@ -180,14 +170,12 @@ public static class ObservabilityEndpoints
     }
 
     private static async Task<IResult> DeleteTrace(
+        HttpContext ctx,
         Guid id,
-        string? accountId,
         MetricsQueries queries,
         ILogger<MetricsQueries> logger)
     {
-        if (string.IsNullOrWhiteSpace(accountId))
-            return Results.BadRequest(new { error = "accountId is required" });
-
+        var accountId = ctx.RequireAccountId();
         try
         {
             var deleted = await queries.DeleteTraceAsync(id, accountId);
@@ -203,16 +191,14 @@ public static class ObservabilityEndpoints
     }
 
     private static async Task<IResult> GetSavings(
+        HttpContext ctx,
         MetricsQueries queries,
         int? days,
-        string? accountId,
         DateTimeOffset? from,
         DateTimeOffset? to,
         ILogger<MetricsQueries> logger)
     {
-        if (string.IsNullOrWhiteSpace(accountId))
-            return Results.BadRequest(new { error = "accountId is required" });
-
+        var accountId = ctx.RequireAccountId();
         try
         {
             var result = await queries.GetSavingsAsync(days ?? 30, accountId, from, to);

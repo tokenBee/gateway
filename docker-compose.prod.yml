@@ -7,6 +7,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__Default=YOUR_DB
       - Compression__SidecarUrl=http://sidecar:8000
+      - Supabase__Url=https://YOUR_PROJECT.supabase.co
+      - Supabase__AnonKey=YOUR_SUPABASE_ANON_KEY
     depends_on:
       - sidecar
 
